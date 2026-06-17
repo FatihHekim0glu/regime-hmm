@@ -40,9 +40,7 @@ jobs:
         run: uv run ruff check src
 
       - name: Type-check (mypy)
-        # Non-blocking: strict mypy may have residual issues we still surface in
-        # the log without failing the whole pipeline.
-        continue-on-error: true
+        # Strict gate: a clean strict-mypy run is a hard requirement per the brief.
         run: uv run mypy src
 
       - name: Test (pytest + coverage gate)
