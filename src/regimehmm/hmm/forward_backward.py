@@ -16,6 +16,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+from scipy.special import logsumexp
+
+from regimehmm._exceptions import ValidationError
 from regimehmm._typing import FloatArray
 
 
@@ -103,7 +107,19 @@ def forward_pass(
     ValidationError
         If the operand shapes are inconsistent.
     """
-    raise NotImplementedError
+    log_pi = np.asarray(log_startprob, dtype=np.float64)
+    log_a = np.asarray(log_transmat, dtype=np.float64)
+    log_b = np.asarray(log_emission, dtype=np.float64)
+    _validate_hmm_operands(log_pi, log_a, log_b)
+
+    n_obs, n_states = log_b.shape
+    log_alpha = np.empty((n_obs, n_states), dtype=np.float64)
+    log_alpha[0] = log_pi + log_b[0]
+    for t in range(1, n_obs):
+        # log_alpha[t, j] = log_b[t, j] + logsumexp_i(log_alpha[t-1, i] + log_a[i, j]).
+        log_alpha[t] = log_b[t] + logsumexp(log_alpha[t - 1][:, np.newaxis] + log_a, axis=0)
+    log_likelihood = float(logsumexp(log_alpha[-1]))
+    return log_alpha, log_likelihood
 
 
 def backward_pass(
@@ -133,7 +149,21 @@ def backward_pass(
     ValidationError
         If the operand shapes are inconsistent.
     """
-    raise NotImplementedError
+    log_a = np.asarray(log_transmat, dtype=np.float64)
+    log_b = np.asarray(log_emission, dtype=np.float64)
+    n_states = log_b.shape[1]
+    if log_a.shape != (n_states, n_states):
+        raise ValidationError(
+            f"log_transmat shape {log_a.shape} != (n_states, n_states) ({n_states}, {n_states})."
+        )
+
+    n_obs = log_b.shape[0]
+    log_beta = np.empty((n_obs, n_states), dtype=np.float64)
+    log_beta[-1] = 0.0  # empty product
+    for t in range(n_obs - 2, -1, -1):
+        # log_beta[t, i] = logsumexp_j(log_a[i, j] + log_b[t+1, j] + log_beta[t+1, j]).
+        log_beta[t] = logsumexp(log_a + (log_b[t + 1] + log_beta[t + 1])[np.newaxis, :], axis=1)
+    return log_beta
 
 
 def forward_backward(
@@ -181,4 +211,64 @@ def forward_backward(
     ValidationError
         If the operand shapes are inconsistent.
     """
-    raise NotImplementedError
+    log_pi = np.asarray(log_startprob, dtype=np.float64)
+    log_a = np.asarray(log_transmat, dtype=np.float64)
+    log_b = np.asarray(log_emission, dtype=np.float64)
+    _validate_hmm_operands(log_pi, log_a, log_b)
+
+    log_alpha, log_likelihood = forward_pass(log_pi, log_a, log_b)
+    log_beta = backward_pass(log_a, log_b)
+
+    n_obs, n_states = log_b.shape
+
+    # Smoothed posteriors gamma_t(k) proportional to alpha_t(k) * beta_t(k);
+    # normalize each row in log space (denominator = log_likelihood).
+    log_gamma = log_alpha + log_beta
+    log_gamma -= logsumexp(log_gamma, axis=1, keepdims=True)
+    gamma = np.exp(log_gamma)
+
+    # Pair-marginals xi_t(i, j) proportional to
+    #   alpha_t(i) * A_ij * b_j(x_{t+1}) * beta_{t+1}(j).
+    if n_obs > 1:
+        # (n_obs-1, n_states, n_states)
+        log_xi = (
+            log_alpha[:-1, :, np.newaxis]
+            + log_a[np.newaxis, :, :]
+            + (log_b[1:] + log_beta[1:])[:, np.newaxis, :]
+        )
+        log_xi -= logsumexp(log_xi, axis=(1, 2), keepdims=True)
+        xi = np.exp(log_xi)
+    else:
+        xi = np.empty((0, n_states, n_states), dtype=np.float64)
+
+    return ForwardBackwardResult(
+        log_alpha=log_alpha,
+        log_beta=log_beta,
+        gamma=gamma,
+        xi=xi,
+        log_likelihood=log_likelihood,
+    )
+
+
+def _validate_hmm_operands(
+    log_startprob: FloatArray,
+    log_transmat: FloatArray,
+    log_emission: FloatArray,
+) -> None:
+    """Shape-check the ``(log pi, log A, log B)`` triple shared by the recursions."""
+    if log_emission.ndim != 2:
+        raise ValidationError(
+            f"log_emission must be 2-D (n_obs, n_states), got ndim={log_emission.ndim}."
+        )
+    n_obs, n_states = log_emission.shape
+    if n_obs < 1:
+        raise ValidationError("log_emission must have at least one observation.")
+    if log_startprob.shape != (n_states,):
+        raise ValidationError(
+            f"log_startprob shape {log_startprob.shape} != (n_states,) ({n_states},)."
+        )
+    if log_transmat.shape != (n_states, n_states):
+        raise ValidationError(
+            f"log_transmat shape {log_transmat.shape} != (n_states, n_states) "
+            f"({n_states}, {n_states})."
+        )

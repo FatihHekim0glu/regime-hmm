@@ -22,6 +22,23 @@ from regimehmm._typing import FloatArray
 #: A Plotly figure serialized as a plain mapping with ``data`` and ``layout`` keys.
 FigureDict = dict[str, Any]
 
+# quantcore-candidate: mirrors hrp-portfolio:src/hrp/plots.py ({data, layout} shape).
+
+#: A small categorical palette for the regime bands (calm -> turbulent). Keyed by
+#: canonical state index; colours cycle if more states than entries are supplied.
+_REGIME_COLORS: tuple[str, ...] = (
+    "#2ca02c",  # 0 = lowest mean / calm  (green)
+    "#ff7f0e",  # 1 = mid                 (orange)
+    "#d62728",  # 2 = highest vol / crisis(red)
+    "#9467bd",  # 3                       (purple)
+    "#8c564b",  # 4                       (brown)
+)
+
+
+def _regime_color(state: int) -> str:
+    """Return the band colour for a canonical regime index (cycles if needed)."""
+    return _REGIME_COLORS[state % len(_REGIME_COLORS)]
+
 
 def _jsonify(value: Any) -> Any:
     """Recursively convert numpy/pandas scalars and arrays to native Python types."""
@@ -80,7 +97,105 @@ def regime_shaded_figure(
     ValidationError
         If ``series`` and ``states`` are misaligned or a label is out of range.
     """
-    raise NotImplementedError
+    from regimehmm._exceptions import ValidationError
+
+    if not isinstance(series, pd.Series):
+        raise ValidationError("regime_shaded_figure: series must be a pandas Series.")
+    if int(n_states) < 1:
+        raise ValidationError(f"regime_shaded_figure: n_states must be >= 1, got {n_states}.")
+
+    values = series.to_numpy(dtype="float64")
+    labels_arr = np.asarray(states)
+    if labels_arr.ndim != 1:
+        raise ValidationError(
+            f"regime_shaded_figure: states must be 1-D, got ndim={labels_arr.ndim}."
+        )
+    if labels_arr.shape[0] != values.shape[0]:
+        raise ValidationError(
+            f"regime_shaded_figure: series ({values.shape[0]}) and states "
+            f"({labels_arr.shape[0]}) must be the same length."
+        )
+
+    labels_int = np.round(labels_arr).astype(int)
+    if not np.allclose(labels_int, labels_arr):
+        raise ValidationError("regime_shaded_figure: states must be integer-valued labels.")
+    if labels_int.size and (int(labels_int.min()) < 0 or int(labels_int.max()) >= int(n_states)):
+        raise ValidationError(
+            f"regime_shaded_figure: states contains a label outside 0..{int(n_states) - 1}."
+        )
+
+    # The x-axis is the (date) index, rendered as ISO strings so it crosses the
+    # API boundary as plain JSON regardless of index dtype.
+    x_axis = [v.isoformat() if hasattr(v, "isoformat") else str(v) for v in series.index.tolist()]
+    n_obs = values.shape[0]
+
+    # The price/return line.
+    data: list[dict[str, Any]] = [
+        {
+            "type": "scatter",
+            "mode": "lines",
+            "x": list(x_axis),
+            "y": [_jsonify(v) for v in values],
+            "name": str(series.name) if series.name is not None else "series",
+            "line": {"color": "#222222", "width": 1.4},
+            "hovertemplate": "%{x}<br>%{y:.4f}<extra></extra>",
+        }
+    ]
+
+    # Background ribbon: one rectangle per maximal run of a single regime label,
+    # spanning the full vertical extent (``yref="paper"``). Walking contiguous runs
+    # keeps the shape count small and the bands visually clean.
+    shapes: list[dict[str, Any]] = []
+    run_start = 0
+    for t in range(1, n_obs + 1):
+        if t == n_obs or labels_int[t] != labels_int[run_start]:
+            state = int(labels_int[run_start])
+            # Half-step padding at the run edges so adjacent bands abut cleanly.
+            x0 = x_axis[run_start]
+            x1 = x_axis[min(t, n_obs - 1)]
+            shapes.append(
+                {
+                    "type": "rect",
+                    "xref": "x",
+                    "yref": "paper",
+                    "x0": x0,
+                    "x1": x1,
+                    "y0": 0.0,
+                    "y1": 1.0,
+                    "fillcolor": _regime_color(state),
+                    "opacity": 0.16,
+                    "line": {"width": 0},
+                    "layer": "below",
+                }
+            )
+            run_start = t
+
+    # Invisible marker traces purely to drive a per-regime legend (one entry per
+    # canonical state, in order).
+    for state in range(int(n_states)):
+        data.append(
+            {
+                "type": "scatter",
+                "mode": "markers",
+                "x": [x_axis[0]] if x_axis else [],
+                "y": [_jsonify(values[0])] if n_obs else [],
+                "name": f"regime {state}",
+                "marker": {"size": 10, "color": _regime_color(state), "symbol": "square"},
+                "opacity": 0.0,
+                "hoverinfo": "skip",
+                "showlegend": True,
+            }
+        )
+
+    layout: dict[str, Any] = {
+        "title": {"text": str(title)},
+        "xaxis": {"title": {"text": "date"}},
+        "yaxis": {"title": {"text": "level"}},
+        "shapes": shapes,
+        "legend": {"title": {"text": "filtered regime"}},
+        "hovermode": "x unified",
+    }
+    return {"data": data, "layout": layout}
 
 
 def regime_stats_figure(
@@ -115,7 +230,63 @@ def regime_stats_figure(
     ValidationError
         If ``means`` and ``vols`` have different lengths.
     """
-    raise NotImplementedError
+    from regimehmm._exceptions import ValidationError
+
+    means_arr = np.asarray(means, dtype="float64").ravel()
+    vols_arr = np.asarray(vols, dtype="float64").ravel()
+    if means_arr.shape[0] != vols_arr.shape[0]:
+        raise ValidationError(
+            f"regime_stats_figure: means ({means_arr.shape[0]}) and vols "
+            f"({vols_arr.shape[0]}) must have the same length."
+        )
+
+    n_states = means_arr.shape[0]
+    labels = [f"regime {k}" for k in range(n_states)]
+    colors = [_regime_color(k) for k in range(n_states)]
+
+    # A risk/return scatter: annualized volatility (x) vs annualized mean (y), one
+    # marker per regime, coloured by canonical index. This shows the headline at a
+    # glance — low-vol regimes cluster at modest positive mean, high-vol regimes at
+    # lower mean and far higher risk.
+    data: list[dict[str, Any]] = [
+        {
+            "type": "scatter",
+            "mode": "markers+text",
+            "x": [_jsonify(v) for v in vols_arr],
+            "y": [_jsonify(m) for m in means_arr],
+            "text": labels,
+            "textposition": "top center",
+            "marker": {
+                "size": 16,
+                "color": colors,
+                "line": {"width": 1, "color": "#333333"},
+            },
+            "name": "regimes",
+            "hovertemplate": ("%{text}<br>vol=%{x:.3f}<br>mean=%{y:.3f}<extra></extra>"),
+        }
+    ]
+
+    layout: dict[str, Any] = {
+        "title": {"text": str(title)},
+        "xaxis": {"title": {"text": "annualized volatility"}, "tickformat": ".1%"},
+        "yaxis": {"title": {"text": "annualized mean return"}, "tickformat": ".1%"},
+        # A zero-mean reference line so negative-mean (risk-off) regimes are obvious.
+        "shapes": [
+            {
+                "type": "line",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0.0,
+                "x1": 1.0,
+                "y0": 0.0,
+                "y1": 0.0,
+                "line": {"color": "#999999", "width": 1, "dash": "dot"},
+                "layer": "below",
+            }
+        ],
+        "showlegend": False,
+    }
+    return {"data": data, "layout": layout}
 
 
 def oos_equity_figure(
@@ -149,4 +320,63 @@ def oos_equity_figure(
     ValidationError
         If the two series cannot be aligned.
     """
-    raise NotImplementedError
+    from regimehmm._exceptions import ValidationError
+
+    if not isinstance(overlay_returns, pd.Series):
+        raise ValidationError("oos_equity_figure: overlay_returns must be a pandas Series.")
+    if not isinstance(buyhold_returns, pd.Series):
+        raise ValidationError("oos_equity_figure: buyhold_returns must be a pandas Series.")
+
+    # Align on the intersection of the two indexes (no-lookahead-safe) and require a
+    # non-empty overlap so the two wealth curves are directly comparable.
+    common = overlay_returns.index.intersection(buyhold_returns.index)
+    if len(common) == 0:
+        raise ValidationError(
+            "oos_equity_figure: overlay and buy-and-hold series share no common index."
+        )
+    common = common.sort_values()
+    overlay = overlay_returns.reindex(common).astype("float64")
+    buyhold = buyhold_returns.reindex(common).astype("float64")
+
+    def _equity(returns: pd.Series) -> FloatArray:
+        # Compound net returns into a wealth curve starting at 1.0. NaNs are
+        # treated as zero return (a flat step) so a single gap never voids the
+        # whole curve.
+        rets = returns.to_numpy(dtype="float64")
+        rets = np.where(np.isfinite(rets), rets, 0.0)
+        return np.asarray(np.cumprod(1.0 + rets), dtype="float64")
+
+    overlay_curve = _equity(overlay)
+    buyhold_curve = _equity(buyhold)
+
+    x_axis = [v.isoformat() if hasattr(v, "isoformat") else str(v) for v in common.tolist()]
+
+    data: list[dict[str, Any]] = [
+        {
+            "type": "scatter",
+            "mode": "lines",
+            "x": list(x_axis),
+            "y": [_jsonify(v) for v in overlay_curve],
+            "name": "regime overlay",
+            "line": {"color": "#1f77b4", "width": 1.6},
+            "hovertemplate": "%{x}<br>overlay=%{y:.4f}<extra></extra>",
+        },
+        {
+            "type": "scatter",
+            "mode": "lines",
+            "x": list(x_axis),
+            "y": [_jsonify(v) for v in buyhold_curve],
+            "name": "buy & hold",
+            "line": {"color": "#7f7f7f", "width": 1.6, "dash": "dash"},
+            "hovertemplate": "%{x}<br>buy&hold=%{y:.4f}<extra></extra>",
+        },
+    ]
+
+    layout: dict[str, Any] = {
+        "title": {"text": str(title)},
+        "xaxis": {"title": {"text": "date"}},
+        "yaxis": {"title": {"text": "growth of 1.0"}},
+        "legend": {"title": {"text": "strategy"}},
+        "hovermode": "x unified",
+    }
+    return {"data": data, "layout": layout}

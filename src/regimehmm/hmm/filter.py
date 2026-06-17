@@ -22,8 +22,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+from scipy.special import logsumexp
+
+from regimehmm._constants import EPS
+from regimehmm._exceptions import ValidationError
 from regimehmm._typing import FloatArray
-from regimehmm.hmm.kernel import CovarianceType
+from regimehmm.hmm.kernel import CovarianceType, gaussian_log_density
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,12 +72,12 @@ class HMMModel:
     @property
     def n_states(self) -> int:
         """The number of hidden states ``K``."""
-        raise NotImplementedError
+        return int(np.asarray(self.means).shape[0])
 
     @property
     def n_features(self) -> int:
         """The emission feature dimension ``d``."""
-        raise NotImplementedError
+        return int(np.asarray(self.means).shape[1])
 
     def to_dict(self) -> dict[str, Any]:
         """Return a plain, JSON-serializable ``dict`` of the fitted model."""
@@ -133,7 +138,46 @@ def online_filter(model: HMMModel, observations: FloatArray) -> FloatArray:
         If ``observations`` is not 2-D or its feature dimension does not match the
         model.
     """
-    raise NotImplementedError
+    obs = np.asarray(observations, dtype=np.float64)
+    if obs.ndim != 2:
+        raise ValidationError(f"observations must be 2-D (n_obs, n_features), got ndim={obs.ndim}.")
+    if obs.shape[1] != model.n_features:
+        raise ValidationError(
+            f"observations feature dim {obs.shape[1]} != model feature dim {model.n_features}."
+        )
+
+    n_obs = obs.shape[0]
+    n_states = model.n_states
+
+    means = np.asarray(model.means, dtype=np.float64)
+    covariances = np.asarray(model.covariances, dtype=np.float64)
+    # Per-observation, per-state log emission densities. Row t uses obs[t] ONLY,
+    # so the emission contribution at t is independent of any obs[s], s != t.
+    log_emission = gaussian_log_density(
+        obs, means, covariances, covariance_type=model.covariance_type
+    )
+
+    startprob = np.asarray(model.startprob, dtype=np.float64)
+    transmat = np.asarray(model.transmat, dtype=np.float64)
+    log_startprob = np.log(np.clip(startprob, EPS, None))
+    log_transmat = np.log(np.clip(transmat, EPS, None))
+
+    filtered = np.empty((n_obs, n_states), dtype=np.float64)
+    # NO-LOOKAHEAD: the forward recursion only ever consumes log_emission[0..t] to
+    # form row t. Normalizing per step keeps each row a proper posterior over
+    # data <= t; future emissions are never read when computing row t.
+    log_alpha_prev = log_startprob + log_emission[0]
+    norm = logsumexp(log_alpha_prev)
+    filtered[0] = np.exp(log_alpha_prev - norm)
+    log_filtered_prev = log_alpha_prev - norm
+    for t in range(1, n_obs):
+        # log_pred[j] = logsumexp_i(log_filtered_prev[i] + log_transmat[i, j]).
+        log_pred = logsumexp(log_filtered_prev[:, np.newaxis] + log_transmat, axis=0)
+        log_unnorm = log_pred + log_emission[t]
+        norm = logsumexp(log_unnorm)
+        log_filtered_prev = log_unnorm - norm
+        filtered[t] = np.exp(log_filtered_prev)
+    return filtered
 
 
 def filtered_states(model: HMMModel, observations: FloatArray) -> FloatArray:
@@ -160,4 +204,6 @@ def filtered_states(model: HMMModel, observations: FloatArray) -> FloatArray:
     ValidationError
         If ``observations`` is malformed.
     """
-    raise NotImplementedError
+    posterior = online_filter(model, observations)
+    labels = np.argmax(posterior, axis=1).astype(np.float64)
+    return np.asarray(labels, dtype=np.float64)

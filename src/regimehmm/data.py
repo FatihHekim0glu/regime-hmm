@@ -26,7 +26,10 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
+from regimehmm._exceptions import ValidationError
+from regimehmm._rng import make_rng
 from regimehmm._typing import PricesLike
+from regimehmm._validation import ensure_dataframe, ensure_series
 
 #: Where a price/return series ultimately came from. Returned alongside data so
 #: callers (and the API ``data_source`` field) can report provenance.
@@ -34,6 +37,16 @@ DataSource = Literal["polygon", "yfinance", "synthetic", "cache"]
 
 #: Supported synthetic feature sets, mirroring the API ``feature_set`` field.
 FeatureSet = Literal["returns", "returns_vol", "returns_vol_macro"]
+
+#: Canonical default per-state mean returns in ascending-mean order (state ``0``
+#: is the calm, modestly-positive low-vol regime; the last state is the
+#: turbulent, negative-drift crisis regime). Used when ``means`` is omitted.
+_DEFAULT_MEANS: tuple[float, ...] = (0.0008, -0.0004, -0.0010, -0.0016)
+
+#: Canonical default per-state volatilities, sharply different and ascending
+#: (a calm low-vol regime ... a high-vol crisis regime). Used when ``vols`` is
+#: omitted; the first ``n_states`` entries are taken.
+_DEFAULT_VOLS: tuple[float, ...] = (0.006, 0.012, 0.020, 0.035)
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,7 +146,91 @@ def generate_regime_switch(
         If ``n_obs < 1``, ``n_states < 1``, ``persistence`` is outside ``(0, 1)``,
         or a supplied ``means``/``vols`` length does not match ``n_states``.
     """
-    raise NotImplementedError
+    if n_obs < 1:
+        raise ValidationError(f"generate_regime_switch: n_obs must be >= 1, got {n_obs}.")
+    if n_states < 1:
+        raise ValidationError(f"generate_regime_switch: n_states must be >= 1, got {n_states}.")
+    if not 0.0 < persistence < 1.0:
+        raise ValidationError(
+            f"generate_regime_switch: persistence must be in (0, 1), got {persistence}."
+        )
+
+    means_arr = _resolve_state_params(means, _DEFAULT_MEANS, n_states, "means")
+    vols_arr = _resolve_state_params(vols, _DEFAULT_VOLS, n_states, "vols")
+    if bool((vols_arr <= 0.0).any()):
+        raise ValidationError("generate_regime_switch: every vol must be strictly positive.")
+
+    transmat = _sticky_transition(n_states, persistence)
+
+    gen = make_rng(seed)
+    states = np.empty(n_obs, dtype=np.intp)
+    returns = np.empty(n_obs, dtype="float64")
+
+    # Walk the sticky Markov chain, emitting one Gaussian draw per step from the
+    # active state's (mean, vol). Start in state 0 (the canonical calm regime).
+    state = 0
+    for t in range(n_obs):
+        if t > 0:
+            state = int(gen.choice(n_states, p=transmat[state]))
+        states[t] = state
+        returns[t] = gen.normal(loc=float(means_arr[state]), scale=float(vols_arr[state]))
+
+    index = pd.date_range("2010-01-01", periods=n_obs, freq="B")
+    series = pd.Series(returns, index=index, name="regime_switch")
+    return RegimeSwitchSeries(
+        returns=series,
+        states=states,
+        means=means_arr,
+        vols=vols_arr,
+        transmat=transmat,
+        meta={
+            "n_obs": int(n_obs),
+            "n_states": int(n_states),
+            "persistence": float(persistence),
+            "seed": int(seed),
+        },
+    )
+
+
+def _resolve_state_params(
+    supplied: tuple[float, ...] | None,
+    defaults: tuple[float, ...],
+    n_states: int,
+    name: str,
+) -> np.ndarray:
+    """Validate/coerce a per-state parameter tuple to an ``(n_states,)`` array.
+
+    When ``supplied`` is ``None`` the first ``n_states`` canonical ``defaults``
+    are taken (which requires ``n_states <= len(defaults)``); otherwise the
+    supplied length must equal ``n_states``.
+    """
+    if supplied is None:
+        if n_states > len(defaults):
+            raise ValidationError(
+                f"generate_regime_switch: no default {name} for n_states={n_states} "
+                f"(defaults cover up to {len(defaults)} states); pass {name} explicitly."
+            )
+        return np.asarray(defaults[:n_states], dtype="float64")
+    if len(supplied) != n_states:
+        raise ValidationError(
+            f"generate_regime_switch: {name} has length {len(supplied)} but n_states={n_states}."
+        )
+    return np.asarray(supplied, dtype="float64")
+
+
+def _sticky_transition(n_states: int, persistence: float) -> np.ndarray:
+    """Row-stochastic ``(n_states, n_states)`` matrix: ``persistence`` on the diagonal.
+
+    The remaining ``1 - persistence`` mass is spread evenly across the
+    off-diagonal entries of each row (for ``n_states == 1`` the single state is
+    absorbing, i.e. a degenerate ``[[1.0]]``).
+    """
+    if n_states == 1:
+        return np.ones((1, 1), dtype="float64")
+    off = (1.0 - persistence) / (n_states - 1)
+    transmat = np.full((n_states, n_states), off, dtype="float64")
+    np.fill_diagonal(transmat, persistence)
+    return transmat
 
 
 def build_features(
@@ -176,7 +273,35 @@ def build_features(
     ValidationError
         If ``feature_set`` is unsupported or ``vol_window < 1``.
     """
-    raise NotImplementedError
+    if feature_set not in ("returns", "returns_vol", "returns_vol_macro"):
+        raise ValidationError(f"build_features: unsupported feature_set {feature_set!r}.")
+    if vol_window < 1:
+        raise ValidationError(f"build_features: vol_window must be >= 1, got {vol_window}.")
+
+    ret = ensure_series(returns, name="returns")
+
+    # Column 0 is always the raw return — the canonicalization key downstream.
+    columns: dict[str, pd.Series] = {"return": ret}
+
+    if feature_set in ("returns_vol", "returns_vol_macro"):
+        # TRAILING realized volatility: rolling std over PAST returns only. The
+        # window closes at t (inclusive of the current return), so the feature at
+        # t depends on returns <= t — no lookahead. Leading rows with an
+        # incomplete window become NaN and are dropped below.
+        columns["realized_vol"] = ret.rolling(window=vol_window, min_periods=vol_window).std(ddof=0)
+
+    if feature_set == "returns_vol_macro":
+        # A slow macro/trend feature: a long trailing mean of returns (a causal
+        # drift proxy). Window length is a multiple of the vol window so it is
+        # strictly slower-moving; uses past returns <= t only.
+        macro_window = vol_window * 6
+        columns["macro_trend"] = ret.rolling(window=macro_window, min_periods=macro_window).mean()
+
+    features = pd.DataFrame(columns)
+    # Drop leading rows whose trailing windows were incomplete (NaN), so every
+    # surviving row is fully causal.
+    features = features.dropna(axis=0, how="any")
+    return features.astype("float64")
 
 
 def _synthetic_prices(ticker: str, start: date, end: date, *, seed: int = 7) -> pd.DataFrame:
@@ -187,7 +312,26 @@ def _synthetic_prices(ticker: str, start: date, end: date, *, seed: int = 7) -> 
     positive price level, and returns a one-column ``date x ticker`` frame. Seeded
     off the request so the same ``(ticker, start, end, seed)`` is byte-identical.
     """
-    raise NotImplementedError
+    if end <= start:
+        raise ValidationError(f"_synthetic_prices: end ({end}) must be after start ({start}).")
+    index = pd.date_range(start=start, end=end, freq="B")
+    n_obs = len(index)
+
+    # Empty span (e.g. a single weekend day): return a typed empty panel.
+    if n_obs == 0:
+        return pd.DataFrame(index=index, columns=[ticker], dtype="float64")
+
+    # Derive a deterministic seed from the request (ticker + span + seed), masked
+    # to 31 bits so the same request is byte-identical across runs/platforms.
+    digest = hash((ticker, start.isoformat(), end.isoformat(), int(seed)))
+    sample = generate_regime_switch(n_obs, n_states=2, seed=digest & 0x7FFFFFFF)
+
+    # Compound the regime-switch returns into a strictly positive price level,
+    # anchoring the first observation at 100.0 so the panel starts clean.
+    rets = sample.returns.to_numpy(dtype="float64").copy()
+    rets[0] = 0.0
+    prices = 100.0 * np.cumprod(1.0 + rets)
+    return pd.DataFrame({ticker: prices}, index=index, dtype="float64")
 
 
 def get_prices(
@@ -232,7 +376,38 @@ def get_prices(
     ValidationError
         If ``ticker`` is empty or ``end <= start``.
     """
-    raise NotImplementedError
+    if not ticker or not ticker.strip():
+        raise ValidationError("get_prices: ticker must be a non-empty string.")
+    if end <= start:
+        raise ValidationError(f"get_prices: end ({end}) must be after start ({start}).")
+
+    # ``synthetic`` forces the offline path; ``polygon`` and ``auto`` try the real
+    # Polygon provider first and fall through to synthetic on ANY failure (missing
+    # key, network error, empty payload) so the loader never hard-fails.
+    if source_pref in ("polygon", "auto"):
+        try:
+            frame = _fetch_polygon(ticker, start, end)
+        except Exception:
+            frame = None
+        if frame is not None and not frame.empty:
+            return frame.astype("float64"), "polygon"
+
+    return _synthetic_prices(ticker, start, end, seed=seed), "synthetic"
+
+
+def _fetch_polygon(ticker: str, start: date, end: date) -> pd.DataFrame:
+    """Fetch a single-ticker adjusted-close panel from Polygon (lazy import). May raise.
+
+    LAZY IMPORT: :class:`regimehmm.data_providers.polygon.PolygonProvider` (and,
+    inside it, ``httpx``) are imported here, never at module import time, so the
+    ``data`` extra stays optional and importing this module touches no network.
+    """
+    from regimehmm.data_providers.polygon import PolygonProvider
+
+    frame = PolygonProvider().fetch([ticker], start, end)
+    if frame.empty or bool(frame.isna().to_numpy().all()):
+        raise ValueError(f"Polygon returned no usable price data for {ticker!r}.")
+    return frame
 
 
 def compute_returns(prices: PricesLike) -> pd.Series:
@@ -259,4 +434,19 @@ def compute_returns(prices: PricesLike) -> pd.Series:
     ValidationError
         If ``prices`` is malformed or has more than one column.
     """
-    raise NotImplementedError
+    frame = ensure_dataframe(prices, name="prices", allow_nan=True)
+    if frame.shape[1] != 1:
+        raise ValidationError(
+            f"compute_returns: expected a single-column price panel, got {frame.shape[1]} columns."
+        )
+
+    # NO-LOOKAHEAD REQUIREMENT: never forward-fill prices before differencing.
+    # ffill-then-diff manufactures spurious zero returns across gaps and leaks
+    # information; ``fill_method=None`` differences on each column's observed
+    # values only.
+    returns = frame.pct_change(fill_method=None)
+
+    # Drop the leading all-NaN row produced by pct_change and squeeze to 1-D.
+    series = returns.iloc[1:, 0].astype("float64")
+    series.name = str(frame.columns[0])
+    return series

@@ -41,6 +41,11 @@ from regimehmm._validation import (
     ensure_series,
     validate_min_obs,
 )
+from regimehmm.analysis import (
+    RegimeAnalysisResult,
+    assemble_regime_figures,
+    run_regime_analysis,
+)
 from regimehmm.backtest.costs import FixedBpsCost
 from regimehmm.backtest.overlay import (
     OverlayResult,
@@ -103,6 +108,10 @@ __all__ = [
     "EPS",
     "PERIODS_PER_YEAR",
     "TRADING_DAYS",
+    # public entrypoint (the backend calls these)
+    "run_regime_analysis",
+    "assemble_regime_figures",
+    "RegimeAnalysisResult",
     # exceptions
     "RegimeHMMError",
     "InsufficientDataError",

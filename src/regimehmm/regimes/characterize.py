@@ -12,12 +12,16 @@ Importing this module has no side effects.
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
+from regimehmm._exceptions import ValidationError
 from regimehmm._typing import FloatArray
+from regimehmm.backtest.stats import max_drawdown
 from regimehmm.hmm.filter import HMMModel
 
 
@@ -127,4 +131,68 @@ def characterize_regimes(
         If ``states`` and ``returns`` are misaligned or contain out-of-range
         labels.
     """
-    raise NotImplementedError
+    transmat = np.asarray(model.transmat, dtype="float64")
+    if transmat.ndim != 2 or transmat.shape[0] != transmat.shape[1]:
+        raise ValidationError("model.transmat must be a square 2-D matrix.")
+    n_states = int(transmat.shape[0])
+
+    if not isinstance(returns, pd.Series):
+        raise ValidationError("returns must be a pandas Series.")
+    ret_values = returns.to_numpy(dtype="float64")
+
+    states_arr = np.asarray(states)
+    if states_arr.ndim != 1:
+        raise ValidationError(f"states must be 1-dimensional, got ndim={states_arr.ndim}.")
+    states_int = np.round(states_arr).astype(np.intp)
+    if not np.allclose(states_int, states_arr):
+        raise ValidationError("states must contain integer-valued labels.")
+    if states_int.shape[0] != ret_values.shape[0]:
+        raise ValidationError(
+            f"states ({states_int.shape[0]}) and returns ({ret_values.shape[0]}) "
+            "must be the same length."
+        )
+    if states_int.size and (int(states_int.min()) < 0 or int(states_int.max()) >= n_states):
+        raise ValidationError(f"states contains a label outside 0..{n_states - 1}.")
+
+    n_obs = int(states_int.shape[0])
+    sqrt_ppy = math.sqrt(periods_per_year)
+
+    stats: list[RegimeStats] = []
+    for k in range(n_states):
+        mask = states_int == k
+        count = int(mask.sum())
+        frequency = count / n_obs if n_obs else float("nan")
+
+        if count > 0:
+            in_regime = ret_values[mask]
+            mean_return = float(in_regime.mean()) * periods_per_year
+            # Sample std (ddof=1) needs >= 2 points; a single observation has
+            # undefined within-regime volatility/drawdown.
+            volatility = float(in_regime.std(ddof=1)) * sqrt_ppy if count > 1 else float("nan")
+            mdd = max_drawdown(in_regime) if count > 1 else float("nan")
+        else:
+            mean_return = float("nan")
+            volatility = float("nan")
+            mdd = float("nan")
+
+        persistence = float(transmat[k, k])
+        gap = 1.0 - persistence
+        expected_duration = 1.0 / gap if gap > 0.0 else float("inf")
+
+        stats.append(
+            RegimeStats(
+                state=k,
+                frequency=frequency,
+                mean_return=mean_return,
+                volatility=volatility,
+                persistence=persistence,
+                expected_duration=expected_duration,
+                max_drawdown=mdd,
+            )
+        )
+
+    return RegimeCharacterization(
+        n_states=n_states,
+        stats=tuple(stats),
+        meta={"n_obs": n_obs, "periods_per_year": int(periods_per_year)},
+    )

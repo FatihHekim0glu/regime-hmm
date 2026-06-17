@@ -37,7 +37,30 @@ out-of-sample label or signal. This is guarded and property-tested
 - **`data.py`** — a seeded synthetic regime-switch generator (the entire test suite
   runs on it, no network) plus a Polygon-EOD → synthetic loader.
 - **`plots.py`** — lazy Plotly figures (regime-shaded series, OOS equity overlay).
+- **`analysis.py`** — `run_regime_analysis(...)`, the single end-to-end entrypoint
+  the hosted backend calls (fit → canonicalize → online-filter decode →
+  characterize → overlay-vs-buy-and-hold → Memmel-JK + Deflated Sharpe → honest
+  verdict), plus `assemble_regime_figures(...)` for the two frontend Plotly figures.
 - **`cli.py`** — a Typer `fit` / `decode` / `backtest` CLI.
+
+## Public entrypoint
+
+```python
+from regimehmm import run_regime_analysis, assemble_regime_figures
+
+# In-process (a return Series) or load-at-request (ticker → Polygon, synthetic fallback):
+result = run_regime_analysis(returns, n_states=3, feature_set="returns_vol",
+                             cost_bps=10, seed=7)
+summary = result.summary   # n_states, regime_stats, overlay_oos_sharpe,
+                           # buyhold_oos_sharpe, sharpe_diff, jk_pvalue,
+                           # deflated_sharpe, n_effective_trials, verdict, data_source
+figures = assemble_regime_figures(result)   # {"regime_figure", "equity_figure"}
+```
+
+The `verdict` is a **pure function** of the OOS inference: it is structurally
+unable to report `timing_edge` while Memmel-JK is insignificant or the Deflated
+Sharpe (deflated by the full effective `n_trials` = `|n_states grid| × |feature
+variants| × |cost grid|`) is non-positive.
 
 ## Install
 
@@ -58,13 +81,35 @@ uv run mypy src
 uv run pytest -q --cov=regimehmm --cov-report=term --cov-fail-under=85
 ```
 
-## Status
+## Validation
 
-Early scaffold: the reused infrastructure is in place and the HMM kernel, regime,
-overlay, and verdict modules are typed stubs with full contracts. See
-`CHANGELOG.md`. Behaviour, the validation table, limitations (survivorship N/A;
-smoothed posteriors non-tradable), and references (Hamilton 1989; Ang-Bekaert 2002;
-Rabiner 1989; Bailey-Lopez de Prado DSR) land as the stubs are implemented.
+The hand-rolled kernel and inference are pinned against independent oracles and
+property invariants (all green, coverage ≥ 85%, ruff + strict mypy clean):
+
+| Check | Guarantee |
+| --- | --- |
+| HMM log-likelihood / smoothed posteriors / Viterbi path | match `hmmlearn.GaussianHMM` to `1e-6` on seeded 2/3-state data |
+| Deflated Sharpe | matches the reused `dsr` reference to `1e-10` |
+| Online filter | future-perturbation invariance / prefix-determinism (no lookahead) |
+| EM | monotonic log-likelihood increase per iteration |
+| Posteriors / transitions | rows sum to 1; transition rows stochastic |
+| State labels | canonical (ascending-mean) ordering, relabeling-invariant across folds |
+| Honest null | on the `regime_switch` fixture the overlay does **not** beat buy-and-hold → `no_timing_edge` |
+
+## Limitations
+
+- **Smoothed / Viterbi posteriors are non-tradable** — they peek ahead; only the
+  online filter may drive an out-of-sample signal.
+- **Survivorship bias is N/A** — the analysis runs on a single index series
+  (synthetic or one ticker), not a cross-section selected on survival.
+- **The timing overlay is the honest null**, not a product: its in-sample edge
+  decays out-of-sample once the Deflated Sharpe with the full effective `n_trials`
+  is applied. Regime *characterization* is the deliverable.
+
+## References
+
+Hamilton (1989); Ang & Bekaert (2002); Rabiner (1989); Bailey & López de Prado
+(2014, Deflated Sharpe Ratio); Memmel (2003, Sharpe-difference test).
 
 ## License
 

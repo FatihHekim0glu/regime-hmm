@@ -15,7 +15,10 @@ Importing this module has no side effects.
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
+
+from regimehmm._exceptions import ValidationError
 
 
 class TimingVerdict(StrEnum):
@@ -75,7 +78,16 @@ def effective_n_trials(
     ValidationError
         If any factor is less than 1.
     """
-    raise NotImplementedError
+    factors = {
+        "n_states_grid": n_states_grid,
+        "n_feature_variants": n_feature_variants,
+        "n_cost_levels": n_cost_levels,
+    }
+    for label, value in factors.items():
+        if value < 1:
+            raise ValidationError(f"effective_n_trials requires {label} >= 1, got {value}.")
+
+    return n_states_grid * n_feature_variants * n_cost_levels
 
 
 def derive_timing_verdict(
@@ -133,4 +145,31 @@ def derive_timing_verdict(
     ValidationError
         If ``jk_pvalue`` is outside ``[0, 1]``.
     """
-    raise NotImplementedError
+    if math.isnan(jk_pvalue) or not 0.0 <= jk_pvalue <= 1.0:
+        raise ValidationError(
+            f"derive_timing_verdict requires jk_pvalue in [0, 1], got {jk_pvalue}."
+        )
+
+    # Honest-null guards. ANY of these collapses the verdict to NO_TIMING_EDGE,
+    # which is what makes a ``timing_edge`` claim STRUCTURALLY impossible when the
+    # Memmel-JK test is insignificant or the Deflated Sharpe is non-positive:
+    #   * the Sharpe gap is not strictly positive (a non-edge by definition);
+    #   * the Memmel-JK test is insignificant at ``alpha`` (gap indistinguishable
+    #     from zero);
+    #   * the Deflated Sharpe is non-positive (degenerate-deflation guard) or NaN.
+    # NaN ``deflated_sharpe`` / ``sharpe_diff`` are treated as failing their
+    # respective positivity checks (``NaN <= 0`` is False, so test explicitly).
+    gap_is_edge = sharpe_diff > 0.0  # NaN -> False
+    jk_significant = jk_pvalue < alpha
+    dsr_positive = deflated_sharpe > 0.0  # NaN -> False
+
+    if not gap_is_edge or not jk_significant or not dsr_positive:
+        return TimingVerdict.NO_TIMING_EDGE
+
+    # A significant, positive gap that does NOT clear the Deflated-Sharpe
+    # threshold is a fragile, likely-overfit edge.
+    if deflated_sharpe < dsr_threshold:
+        return TimingVerdict.MARGINAL
+
+    # Significant gap AND Deflated Sharpe clears its threshold.
+    return TimingVerdict.TIMING_EDGE

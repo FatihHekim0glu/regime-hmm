@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Full implementations for the genuinely-new modules (HMM `kernel` /
+  `forward_backward` / `em` / `viterbi` / `filter`, `regimes` canonicalize +
+  characterize, the `overlay`, the `verdict`, `data`, `plots`, and the `cli`),
+  wired into one coherent, green library (ruff + strict mypy clean, coverage ≥ 85%).
+- `analysis.run_regime_analysis(...)` — the single public end-to-end entrypoint
+  the backend calls: fit → canonicalize → online-filter decode → characterize →
+  regime-timing overlay vs buy-and-hold (after costs) → Memmel-JK + Deflated Sharpe
+  (full effective `n_trials`) → honest, structurally-constrained verdict. Returns a
+  JSON-serializable `RegimeAnalysisResult` (`summary` + `meta`).
+- `analysis.assemble_regime_figures(...)` — builds the regime-shaded and OOS-equity
+  Plotly figures the frontend renders. Both exported from the package top level.
+- Integration tests running the full entrypoint on the synthetic `regime_switch`
+  fixture (honest-null `no_timing_edge`, full `n_effective_trials` = 36) and unit
+  tests for the block-bootstrap Sharpe-gap CI.
+
 ## [0.1.0] - 2026-06-17
 
 ### Added
