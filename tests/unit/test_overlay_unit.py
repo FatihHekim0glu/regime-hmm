@@ -18,8 +18,10 @@ from regimehmm.backtest.overlay import (
     overlay_backtest,
     overlay_cost_grid,
     regime_exposure,
+    select_risk_off_state,
     walk_forward_overlay,
 )
+from regimehmm.regimes.characterize import RegimeCharacterization, RegimeStats
 
 
 @pytest.mark.unit
@@ -118,6 +120,74 @@ def test_regime_exposure_rejects_empty_risk_off() -> None:
 def test_regime_exposure_rejects_out_of_range_state(bad_state: int) -> None:
     with pytest.raises(ValidationError):
         regime_exposure(np.array([[0.5, 0.5]]), risk_off_states=(bad_state,))
+
+
+# --------------------------------------------------------------------------- #
+# select_risk_off_state (FIX #2: risk-off == argmax(vol), not positional)      #
+# --------------------------------------------------------------------------- #
+def _stat(state: int, *, mean_return: float, volatility: float) -> RegimeStats:
+    """Build a minimal RegimeStats for risk-off selection tests."""
+    return RegimeStats(
+        state=state,
+        frequency=0.5,
+        mean_return=mean_return,
+        volatility=volatility,
+        persistence=0.9,
+        expected_duration=10.0,
+        max_drawdown=-0.1,
+    )
+
+
+def _characterization(stats: tuple[RegimeStats, ...]) -> RegimeCharacterization:
+    return RegimeCharacterization(n_states=len(stats), stats=stats)
+
+
+@pytest.mark.unit
+def test_select_risk_off_is_argmax_vol_not_last_state() -> None:
+    """Risk-off is the HIGHEST-VOL regime, even when that is NOT the last (high-mean) state.
+
+    After canonicalization the LAST state is highest-MEAN-return. A high-mean state
+    can carry low vol; the risk-off overlay must still target the max-vol regime.
+    Here state 2 is the highest mean (canonical last) but state 0 is the highest vol
+    — risk-off must select state 0, never the positional last state.
+    """
+    char = _characterization(
+        (
+            _stat(0, mean_return=-0.30, volatility=0.40),  # highest vol
+            _stat(1, mean_return=0.05, volatility=0.12),
+            _stat(2, mean_return=0.25, volatility=0.15),  # canonical last (highest mean)
+        )
+    )
+    assert select_risk_off_state(char) == 0
+    # The positional (n_states - 1) choice would have wrongly picked state 2.
+    assert select_risk_off_state(char) != char.n_states - 1
+
+
+@pytest.mark.unit
+def test_select_risk_off_matches_numpy_argmax_vol() -> None:
+    """``select_risk_off_state`` == ``argmax`` of the per-regime volatilities."""
+    vols = [0.10, 0.35, 0.22, 0.08]
+    stats = tuple(_stat(i, mean_return=0.01 * i, volatility=v) for i, v in enumerate(vols))
+    char = _characterization(stats)
+    assert select_risk_off_state(char) == int(np.argmax(np.asarray(vols)))
+
+
+@pytest.mark.unit
+def test_select_risk_off_ignores_nan_vol_unvisited_regime() -> None:
+    """An unvisited (NaN-vol) regime never wins risk-off over a populated one."""
+    char = _characterization(
+        (
+            _stat(0, mean_return=-0.1, volatility=0.20),
+            _stat(1, mean_return=0.2, volatility=float("nan")),  # unvisited
+        )
+    )
+    assert select_risk_off_state(char) == 0
+
+
+@pytest.mark.unit
+def test_select_risk_off_rejects_empty() -> None:
+    with pytest.raises(ValidationError):
+        select_risk_off_state(RegimeCharacterization(n_states=0, stats=()))
 
 
 # --------------------------------------------------------------------------- #

@@ -41,31 +41,31 @@ regimes cleanly (online-filtered, canonical order, annualized):
 Both regimes are highly persistent (~0.98, multi-month expected dwell times), the
 risk-off regime carries roughly double the volatility and a sharply negative mean,
 and the labels are stable across folds (canonical ascending-mean ordering,
-[ADR-0002](docs/decisions/0002-state-canonicalization.md)).
+[ADR-0002](docs/decisions/0002-state-canonicalization.md)). The overlay reduces
+exposure in the **highest-conditional-volatility** regime — selected from the
+per-regime characterization (`argmax` of the conditional vol), **not** by state
+position. After canonicalization the *last* state is the highest-*mean*-return
+regime, which is generally **not** the highest-vol one, so a positional pick would
+target the wrong regime.
 
-**2. Timing — the honest null.** The regime-conditioned exposure overlay (cut
-exposure in the risk-off regime, online filter + `shift(1)`, 10 bps per side)
-does **not** beat buy-and-hold OOS. The headline run
-(`n_states=2, feature_set="returns", cost_bps=10`):
+**2. Timing — the honest null (genuinely out-of-sample).** The regime-conditioned
+exposure overlay cuts exposure in the **highest-volatility** regime (selected from
+the per-regime characterization, **not** by state position), using the online
+filter + `shift(1)` at 10 bps per side. Critically, the reported OOS Sharpe numbers
+come from an **anchored walk-forward** (`walk_forward_regime_overlay`): on every
+fold the StandardScaler **and** the HMM are refit on the **train window only**, the
+online filter labels the upcoming window, and the overlay and buy-and-hold are
+scored on the **identical** post-purge/embargo OOS index. So these are honest
+out-of-sample numbers — never an in-sample fit relabeled "OOS".
 
-| Metric | Value |
-| --- | ---: |
-| Overlay OOS Sharpe | −1.52 |
-| Buy-and-hold OOS Sharpe | −0.83 |
-| Sharpe gap (overlay − buy-hold) | −0.69 |
-| Memmel-JK p-value | 0.001 |
-| Deflated Sharpe (n_trials = 36) | 0.00 |
-| Effective `n_trials` (3 × 3 × 4) | 36 |
-| **Verdict** | **`no_timing_edge`** |
-
-The gap is *negative* — the overlay loses — so even though the Memmel-JK test is
-nominally significant, the verdict is structurally `no_timing_edge` (you cannot
-claim a "timing edge" by *under*performing). Across the `n_states` × feature ×
-cost grid the overlay's point Sharpe lands either side of buy-and-hold on any
-single finite realization, but the **gap is never significantly positive** and the
-Deflated Sharpe (deflated by the full 36-trial grid) never clears its threshold —
-so the verdict is `no_timing_edge` everywhere. That is the honest finding the
-literature predicts, mechanically enforced by the pure-function verdict
+On any single finite OOS realization the overlay's point Sharpe lands either side of
+buy-and-hold, but the **Sharpe gap is never significantly positive** under
+Memmel-Jobson-Korkie, and the Deflated Sharpe — deflated by the full 36-trial grid
+**and a real, non-degenerate cross-trial Sharpe variance** (never `0.0`) — never
+clears its threshold. The pure-function verdict is therefore structurally
+`no_timing_edge`: it cannot claim a "timing edge" when the gap is statistically
+indistinguishable from zero (or negative). That is the honest finding the
+literature predicts, mechanically enforced by the verdict
 ([ADR-0004](docs/decisions/0004-honest-timing-null.md)).
 
 ## What's in the box
@@ -86,9 +86,13 @@ literature predicts, mechanically enforced by the pure-function verdict
   runs on it, no network) plus a Polygon-EOD → synthetic loader.
 - **`plots.py`** — lazy Plotly figures (regime-shaded series, OOS equity overlay).
 - **`analysis.py`** — `run_regime_analysis(...)`, the single end-to-end entrypoint
-  the hosted backend calls (fit → canonicalize → online-filter decode →
-  characterize → overlay-vs-buy-and-hold → Memmel-JK + Deflated Sharpe → honest
-  verdict), plus `assemble_regime_figures(...)` for the two frontend Plotly figures.
+  the hosted backend calls. A full-window fit drives the **in-sample regime figure +
+  characterization table** (the display layer); the reported **OOS Sharpe numbers**
+  come from the genuinely-out-of-sample anchored walk-forward
+  (`walk_forward_regime_overlay`: per-fold train-only scaler + HMM fit, online-filter
+  OOS labels, max-vol risk-off, identical OOS index) → Memmel-JK + Deflated Sharpe
+  (full `n_trials`, real cross-trial variance) → honest verdict. Plus
+  `assemble_regime_figures(...)` for the two frontend Plotly figures.
 - **`cli.py`** — a Typer `fit` / `decode` / `backtest` CLI.
 
 For how the layers fit together and the invariants they guarantee, see
@@ -109,10 +113,20 @@ summary = result.summary   # n_states, regime_stats, overlay_oos_sharpe,
 figures = assemble_regime_figures(result)   # {"regime_figure", "equity_figure"}
 ```
 
+`overlay_oos_sharpe` / `buyhold_oos_sharpe` are **genuinely out-of-sample**: they
+come from the anchored walk-forward (`walk_forward_regime_overlay`), which refits
+the scaler + HMM on each fold's **train window only**, derives the regime labels
+from the **online filter** (never smoothed/Viterbi), applies `shift(1)`, and scores
+both legs on the identical post-purge/embargo OOS index. The full-window fit kept on
+the result (`result.states`, `result.model`) is the **in-sample regime map for the
+figure only** — it is never reported as an OOS number; the per-fold OOS labels live
+in `result.oos_states`.
+
 The `verdict` is a **pure function** of the OOS inference: it is structurally
 unable to report `timing_edge` while Memmel-JK is insignificant or the Deflated
 Sharpe (deflated by the full effective `n_trials` = `|n_states grid| × |feature
-variants| × |cost grid|`) is non-positive.
+variants| × |cost grid|`, with a **real cross-trial Sharpe variance**) is
+non-positive.
 
 ## Install
 
@@ -181,10 +195,18 @@ coverage ≥ 85%, ruff + strict mypy clean):
   sample and so peek ahead. Only the online filter may drive an out-of-sample
   signal; smoothed/Viterbi outputs are exploratory (EDA) only. This is the central
   design constraint, not an afterthought ([ADR-0001](docs/decisions/0001-online-filter-only-tradable.md)).
-- **Survivorship bias is N/A** — the analysis runs on a single index series
-  (synthetic, or one ticker such as SPY), not a cross-section selected on survival.
-  There is no universe-construction step in which a survivorship screen could enter,
-  so the usual cross-sectional survivorship caveat does not apply here.
+- **Survivorship bias is N/A *today* — but is a hard gate for any future
+  cross-sectional overlay.** The current analysis runs on a single index series
+  (synthetic, or one ticker such as SPY), not a cross-section selected on survival,
+  so there is no universe-construction step in which a survivorship screen could
+  enter and the usual cross-sectional survivorship caveat does not apply.
+  **Forward-looking requirement:** any future cross-sectional stock overlay (e.g.
+  ranking or selecting across an S&P 500 constituent set) **MUST** route its
+  universe through the point-in-time `sp500_universe` builder — reconstructing the
+  constituents *as known on each rebalance date*, never today's surviving members.
+  Using a present-day membership list to backtest the past silently injects
+  survivorship bias and would invalidate the OOS discipline this library exists to
+  enforce.
 - **The timing overlay is the honest null, not a product** — its in-sample edge
   decays out-of-sample once the Deflated Sharpe with the full effective `n_trials`
   (= 36 = 3 `n_states` × 3 feature sets × 4 cost levels) is applied. Regime
