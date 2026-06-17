@@ -5,54 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-
-- Full implementations for the genuinely-new modules (HMM `kernel` /
-  `forward_backward` / `em` / `viterbi` / `filter`, `regimes` canonicalize +
-  characterize, the `overlay`, the `verdict`, `data`, `plots`, and the `cli`),
-  wired into one coherent, green library (ruff + strict mypy clean, coverage ≥ 85%).
-- `analysis.run_regime_analysis(...)` — the single public end-to-end entrypoint
-  the backend calls: fit → canonicalize → online-filter decode → characterize →
-  regime-timing overlay vs buy-and-hold (after costs) → Memmel-JK + Deflated Sharpe
-  (full effective `n_trials`) → honest, structurally-constrained verdict. Returns a
-  JSON-serializable `RegimeAnalysisResult` (`summary` + `meta`).
-- `analysis.assemble_regime_figures(...)` — builds the regime-shaded and OOS-equity
-  Plotly figures the frontend renders. Both exported from the package top level.
-- Integration tests running the full entrypoint on the synthetic `regime_switch`
-  fixture (honest-null `no_timing_edge`, full `n_effective_trials` = 36) and unit
-  tests for the block-bootstrap Sharpe-gap CI.
-
 ## [0.1.0] - 2026-06-17
 
+Initial release: a complete, import-pure, typed Gaussian HMM for honest
+market-regime characterization. Regime characterization is the deliverable; the
+regime-timing overlay does **not** reliably beat buy-and-hold out-of-sample after
+costs, and its in-sample edge decays under the Deflated Sharpe. 258 tests pass;
+coverage 88% (gate ≥ 85%); ruff + strict mypy clean.
+
 ### Added
 
-- Initial package skeleton (src-layout, import name `regimehmm`).
-- Reused core helpers (renamed from the `hrp-portfolio` infra): `_constants`,
-  `_typing`, `_exceptions`, `_validation`, `_manifest` (`RunManifest` with
-  BLAKE2b config-hash), and `_rng` (seeded PCG64 generator + substream spawning).
-- Reused evaluation/backtest infra: Probabilistic + Deflated Sharpe (`dsr`),
-  Jobson-Korkie-Memmel + stationary block bootstrap (`comparison`), the
-  no-lookahead walk-forward engine (`walk_forward`), per-side bps costs (`costs`),
-  Sharpe/vol/turnover/drawdown stats (`stats`), and the Polygon EOD provider.
-- Stub signatures with full contracts for the genuinely new modules:
-  - `hmm/` — `kernel` (Gaussian emission log-density + covariance floor),
-    `forward_backward` (log-space alpha/beta, smoothed `gamma`/`xi`),
-    `em` (Baum-Welch with seeded restarts + monotonic-LL invariant),
-    `viterbi` (MAP path, EDA-only), and `filter` (the ONLINE forward filter —
-    the only tradable, no-lookahead regime posterior — plus the `HMMModel`).
-  - `regimes/` — `canonicalize` (stable cross-fold state ordering) and
-    `characterize` (per-regime mean/vol/persistence/duration/drawdown).
-  - `backtest/overlay` — regime-conditioned exposure overlay vs buy-and-hold.
-  - `evaluation/verdict` — pure-function regime-timing verdict with the honest-null
-    discipline and the effective-`n_trials` count.
-  - `data` (synthetic regime-switch generator + Polygon/synthetic loader),
-    `plots` (lazy Plotly regime-shaded + OOS equity figures), and `cli` (Typer).
-- Curated top-level `__init__.py` re-exporting the public API.
-- Partitioned `tests/` (unit/parity/property/regression/integration) with seeded
-  conftest fixtures (`one_factor`, `regime_switch`, `pure_noise`) and import-surface
-  smoke tests.
+- **From-scratch Gaussian HMM** (`hmm/`): `kernel` (Gaussian emission log-density,
+  diag/full covariance with a strictly positive floor), `forward_backward`
+  (log-space alpha/beta, smoothed `gamma`, pair-marginals `xi`, log-likelihood),
+  `em` (Baum-Welch with seeded PCG64-substream restarts and a monotonic-LL
+  assertion), `viterbi` (MAP path, EDA-only), and `filter` — the **online forward
+  filter**, the only tradable no-lookahead regime posterior — plus the frozen
+  `HMMModel`. Parity-tested to `1e-6` against `hmmlearn.GaussianHMM`.
+- **Regime layer** (`regimes/`): `canonicalize` (states sorted by ascending mean
+  return, vol tie-break, for stable cross-fold labels) and `characterize`
+  (per-regime mean / vol / persistence / expected duration / max-drawdown).
+- **Backtest** (`backtest/`): the reused no-lookahead walk-forward engine, per-side
+  bps `costs`, Sharpe/vol/turnover/drawdown `stats`, and the regime `overlay`
+  (filtered-regime exposure, `signal.shift(1)` chokepoint, cost sensitivity grid)
+  scored vs buy-and-hold on an identical OOS index.
+- **Evaluation** (`evaluation/`): Probabilistic + Deflated Sharpe (`dsr`),
+  Memmel-corrected Jobson-Korkie Sharpe-difference + stationary block bootstrap
+  (`comparison`), and the pure-function `verdict` (`no_timing_edge` / `marginal` /
+  `timing_edge`) with the honest-null discipline and the full effective
+  `n_trials` = `|n_states grid| × |feature variants| × |cost grid|` = 36.
+- **`analysis.run_regime_analysis(...)`** — the single public end-to-end entrypoint
+  the backend calls: load returns → causal features + train-only standardization →
+  fit → canonicalize → online-filter decode → characterize → overlay-vs-buy-and-hold
+  after costs → Memmel-JK + Deflated Sharpe → structurally-constrained verdict.
+  Returns a frozen, JSON-serializable `RegimeAnalysisResult`.
+- **`analysis.assemble_regime_figures(...)`** — builds the two frontend Plotly
+  `{data, layout}` figures (regime-shaded cumulative return by filtered labels; OOS
+  equity overlay vs buy-and-hold). Both exported from the package top level.
+- **`data.py`** — a seeded synthetic regime-switch generator (the entire offline
+  test suite runs on it) plus a Polygon-EOD loader with graceful synthetic
+  fallback; `plots.py` — lazy Plotly figure builders; `cli.py` — a Typer
+  `fit` / `decode` / `backtest` CLI.
+- **Reused, renamed-from-`hrp` infra**: `_constants`, `_typing`, `_exceptions`,
+  `_validation`, `_manifest` (`RunManifest` with a BLAKE2b config hash), `_rng`
+  (seeded PCG64 generator + substream spawning), the Polygon EOD provider, and the
+  `dsr` / `comparison` / `walk_forward` / `costs` / `stats` modules.
+- **Tests**: partitioned `unit` / `parity` / `property` / `regression` /
+  `integration` suites with seeded `conftest` fixtures (`one_factor`,
+  `regime_switch`, `pure_noise`) — HMM parity to `1e-6`, online-filter
+  no-lookahead (future-perturbation invariance / prefix-determinism), canonical
+  ordering, stochastic transitions, EM monotonic-LL, the covariance-floor guard,
+  the honest-null `no_timing_edge` regression, and the verdict truth table.
+- **Docs**: `README` (honest headline + actual synthetic numbers + validation table
+  + reproduce block + limitations + references), `docs/DESIGN.md`, and ADRs
+  `0001`–`0005` (online-filter-only-tradable, state-canonicalization, EM
+  restarts + covariance floor, honest-null verdict, hmmlearn-as-parity-oracle);
+  `CITATION.cff`; MIT `LICENSE`; `CONTRIBUTING`.
+- **CI**: `ci.yml` (ruff + strict mypy + pytest with `fail_under = 85`) and a
+  `no-ai-attribution` guard that rejects AI co-author / "Generated with" trailers.
 
-[Unreleased]: https://github.com/FatihHekim0glu/regime-hmm/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/FatihHekim0glu/regime-hmm/releases/tag/v0.1.0

@@ -1,0 +1,81 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "regime-hmm: A from-scratch Gaussian HMM for honest market-regime characterization"
+abstract: >-
+  A pure, typed Python implementation of a Gaussian Hidden Markov Model for
+  market-regime characterization — emission log-density, log-space
+  forward-backward, Baum-Welch EM with seeded restarts, Viterbi, and an online
+  forward filter — parity-tested to 1e-6 against hmmlearn. The online forward
+  filter (data up to t only) is the sole tradable regime signal; smoothed and
+  Viterbi posteriors peek ahead and are exploratory-only. A regime-conditioned
+  exposure overlay is tested out-of-sample against buy-and-hold under realistic
+  per-side costs, with a pure-function verdict that is structurally unable to
+  claim a timing edge unless the Memmel-corrected Jobson-Korkie Sharpe-difference
+  test is significant and the Deflated Sharpe (with the full effective number of
+  trials) survives. The honest finding is that regime characterization is the
+  deliverable; the timing overlay does not reliably beat buy-and-hold after costs
+  and its in-sample edge decays under deflation.
+type: software
+version: 0.1.0
+date-released: "2026-06-17"
+license: MIT
+repository-code: "https://github.com/FatihHekim0glu/regime-hmm"
+url: "https://fatihhekimoglu.com"
+authors:
+  - family-names: "FatihHekim0glu"
+keywords:
+  - hidden-markov-model
+  - market-regimes
+  - regime-switching
+  - quantitative-finance
+  - time-series
+  - deflated-sharpe-ratio
+references:
+  - type: article
+    title: "A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle"
+    authors:
+      - family-names: "Hamilton"
+        given-names: "James D."
+    journal: "Econometrica"
+    volume: 57
+    issue: 2
+    year: 1989
+  - type: article
+    title: "International Asset Allocation with Regime Shifts"
+    authors:
+      - family-names: "Ang"
+        given-names: "Andrew"
+      - family-names: "Bekaert"
+        given-names: "Geert"
+    journal: "The Review of Financial Studies"
+    volume: 15
+    issue: 4
+    year: 2002
+  - type: article
+    title: "A Tutorial on Hidden Markov Models and Selected Applications in Speech Recognition"
+    authors:
+      - family-names: "Rabiner"
+        given-names: "Lawrence R."
+    journal: "Proceedings of the IEEE"
+    volume: 77
+    issue: 2
+    year: 1989
+  - type: article
+    title: "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality"
+    authors:
+      - family-names: "Bailey"
+        given-names: "David H."
+      - family-names: "Lopez de Prado"
+        given-names: "Marcos"
+    journal: "The Journal of Portfolio Management"
+    volume: 40
+    issue: 5
+    year: 2014
+  - type: article
+    title: "Performance Hypothesis Testing with the Sharpe Ratio"
+    authors:
+      - family-names: "Memmel"
+        given-names: "Christoph"
+    journal: "Finance Letters"
+    volume: 1
+    year: 2003
