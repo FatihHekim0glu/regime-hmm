@@ -3,7 +3,7 @@
 Covers the public :func:`regimehmm.evaluation.comparison.block_bootstrap_sharpe_gap`
 (the stationary block-bootstrap CI on the Sharpe gap) and its sibling p-value test
 :func:`~regimehmm.evaluation.comparison.jobson_korkie_memmel`. These run on the
-deterministic synthetic ``regime_switch`` fixture / inline seeded arrays — no
+deterministic synthetic ``regime_switch`` fixture / inline seeded arrays - no
 network.
 
 The block bootstrap is exercised with a small ``n_bootstrap`` so the test stays

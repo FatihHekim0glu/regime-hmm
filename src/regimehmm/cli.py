@@ -8,11 +8,11 @@ side effects). The ``regime-hmm`` console-script entry point calls :func:`app`.
 
 Three sub-commands:
 
-* ``fit`` — generate (or load) a return series, fit the Gaussian HMM on the chosen
+* ``fit`` - generate (or load) a return series, fit the Gaussian HMM on the chosen
   feature set, canonicalize the states, and print the fitted parameters.
-* ``decode`` — fit, then decode regimes with the ONLINE FILTER (the only tradable,
+* ``decode`` - fit, then decode regimes with the ONLINE FILTER (the only tradable,
   no-lookahead signal) and print the per-regime characterization.
-* ``backtest`` — fit, decode with the online filter, run the regime-timing exposure
+* ``backtest`` - fit, decode with the online filter, run the regime-timing exposure
   overlay against buy-and-hold across a cost grid, run the Memmel-JK / Deflated
   Sharpe inference, and print the honest verdict.
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from regimehmm.hmm.filter import HMMModel
 
 
-# Default exploration grids — also drive the Deflated-Sharpe effective trial count
+# Default exploration grids - also drive the Deflated-Sharpe effective trial count
 # (|n_states grid| x |feature variants| x |cost grid|), so they are named here and
 # reused so the multiplicity is never silently collapsed to 1.
 _N_STATES_GRID: tuple[int, ...] = (2, 3, 4)
@@ -58,7 +58,7 @@ def build_app() -> typer.Typer:
         name="regime-hmm",
         add_completion=False,
         help=(
-            "Market-regime Gaussian HMM — characterize persistent high/low-vol "
+            "Market-regime Gaussian HMM - characterize persistent high/low-vol "
             "regimes, then honestly test whether a regime-timing overlay beats "
             "buy-and-hold OOS after costs (spoiler: characterization is the win)."
         ),
@@ -222,7 +222,7 @@ def fit(**kwargs: Any) -> int:
 def decode(**kwargs: Any) -> int:
     """Fit, decode regimes via the ONLINE FILTER, and print the characterization.
 
-    The decode uses the online forward filter (data <= t) — the ONLY tradable,
+    The decode uses the online forward filter (data <= t) - the ONLY tradable,
     no-lookahead regime signal. Smoothed/Viterbi posteriors are never used here.
 
     Parameters
@@ -252,7 +252,7 @@ def decode(**kwargs: Any) -> int:
 
         characterization = characterize_regimes(model, states, aligned_returns)
 
-        print("regime-hmm decode (ONLINE FILTER — no lookahead)")
+        print("regime-hmm decode (ONLINE FILTER - no lookahead)")
         print("=" * 60)
         print(f"observations       : {len(features)}")
         print(f"n_states           : {characterization.n_states}")

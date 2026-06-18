@@ -4,7 +4,7 @@ Hypothesis-driven invariants that must hold for ANY admissible parameters:
 
 - the generator is a pure function of its seed (determinism / reproducibility);
 - its transition matrix is always row-stochastic;
-- the feature builder is strictly causal — perturbing a strictly-future return
+- the feature builder is strictly causal - perturbing a strictly-future return
   never changes an earlier feature row (the no-lookahead guard, mirrored from the
   online-filter discipline that governs the rest of the project).
 """

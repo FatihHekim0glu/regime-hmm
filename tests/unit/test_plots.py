@@ -1,6 +1,6 @@
 """Unit tests for the lazy Plotly figure builders.
 
-Covers ``regimehmm.plots`` — the three figure builders:
+Covers ``regimehmm.plots`` - the three figure builders:
 
 * :func:`~regimehmm.plots.regime_shaded_figure` (price/return line + filtered-regime
   background ribbon + per-regime legend),

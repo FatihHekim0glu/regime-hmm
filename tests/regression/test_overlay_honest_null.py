@@ -2,8 +2,8 @@
 
 This is the project's HEADLINE honest-null result. On the persistent-vol
 ``regime_switch`` fixture, an overlay that cuts exposure in the (genuinely
-high-vol / low-mean) risk-off regime — using the ONLINE FILTER only and the
-``shift(1)`` chokepoint — does not reliably beat a buy-and-hold baseline once
+high-vol / low-mean) risk-off regime - using the ONLINE FILTER only and the
+``shift(1)`` chokepoint - does not reliably beat a buy-and-hold baseline once
 per-side costs are charged, and the Memmel-Jobson-Korkie Sharpe-difference test
 is INSIGNIFICANT. That is exactly the condition that feeds the ``no_timing_edge``
 verdict.
@@ -48,7 +48,7 @@ def _fit_and_filter(returns: pd.Series, split: int) -> tuple[np.ndarray, int]:
     fixture's return series). The online filter then labels the FULL window
     causally; row ``t`` sees data ``<= t`` only. The risk-off state is the
     highest-variance fitted state (the genuine high-vol regime), identified from the
-    model — not from any look-ahead label.
+    model - not from any look-ahead label.
     """
     arr = returns.to_numpy(dtype="float64").reshape(-1, 1)
     train = arr[:split]
@@ -79,14 +79,14 @@ def test_overlay_does_not_beat_buyhold_oos(regime_switch: dict[str, object]) -> 
     # HONEST NULL: the overlay does not reliably beat buy-and-hold after costs.
     assert result.overlay_sharpe <= result.buyhold_sharpe + 1e-9, (
         f"overlay Sharpe {result.overlay_sharpe:.4f} beat buy-and-hold "
-        f"{result.buyhold_sharpe:.4f} — investigate leakage."
+        f"{result.buyhold_sharpe:.4f} - investigate leakage."
     )
     # Memmel-JK Sharpe-difference test is INSIGNIFICANT at the 5% level.
     jk_pvalue = jobson_korkie_memmel(
         np.asarray(result.overlay_returns.to_numpy(), dtype=np.float64),
         np.asarray(result.buyhold_returns.to_numpy(), dtype=np.float64),
     )
-    assert jk_pvalue > 0.05, f"JK p-value {jk_pvalue:.4f} is significant — unexpected timing edge."
+    assert jk_pvalue > 0.05, f"JK p-value {jk_pvalue:.4f} is significant - unexpected timing edge."
     # The overlay genuinely cut some exposure (it is not trivially buy-and-hold).
     assert 0.0 < result.meta["mean_exposure"] < 1.0
 
@@ -141,7 +141,7 @@ def test_walk_forward_overlay_honest_null(regime_switch: dict[str, object]) -> N
     over THAT window keeps the filtered signal honestly causal (the model never saw
     these returns at fit time), which is the regime in which the honest-null claim
     applies. Feeding the walk-forward the in-sample window instead would let the
-    overlay "win" purely because the model was fitted on those bars — an artifact
+    overlay "win" purely because the model was fitted on those bars - an artifact
     of the fit boundary, not a tradable edge.
     """
     returns = _as_series(regime_switch["returns"])
@@ -166,13 +166,13 @@ def test_walk_forward_overlay_honest_null(regime_switch: dict[str, object]) -> N
     assert result.exposure.index.equals(result.overlay_returns.index)
     # HONEST NULL: the Sharpe GAP is not statistically significant. A point Sharpe
     # can land either side of buy-and-hold on a single finite OOS realization; the
-    # honest-null claim — and the verdict layer — keys on the Memmel-JK test being
+    # honest-null claim - and the verdict layer - keys on the Memmel-JK test being
     # INSIGNIFICANT, which is what structurally forbids claiming a timing edge.
     jk_pvalue = jobson_korkie_memmel(
         np.asarray(result.overlay_returns.to_numpy(), dtype=np.float64),
         np.asarray(result.buyhold_returns.to_numpy(), dtype=np.float64),
     )
     assert jk_pvalue > 0.05, (
-        f"walk-forward overlay JK p-value {jk_pvalue:.4f} is significant — "
+        f"walk-forward overlay JK p-value {jk_pvalue:.4f} is significant - "
         "the overlay would claim a timing edge; investigate leakage."
     )

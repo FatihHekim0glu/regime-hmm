@@ -201,7 +201,7 @@ def overlay_backtest(
 
     COSTS: the per-period cost is ``|e_t - e_{t-1}| * cost_bps / 10_000`` where the
     ``e_t`` are the APPLIED (shifted) exposures, charged on the bar at which the new
-    exposure takes effect — the same per-side convention as
+    exposure takes effect - the same per-side convention as
     :class:`~regimehmm.backtest.costs.FixedBpsCost`. Because the cost is a function
     of ``|Δe|`` and ``cost_bps``, the net Sharpe is non-increasing in ``cost_bps``
     (cost-monotonicity, regression-pinned in :func:`overlay_cost_grid`).
@@ -433,7 +433,7 @@ def walk_forward_overlay(
         raise ValidationError("walk_forward_overlay: exposure_signal must lie in [0, 1].")
 
     # Single-asset panel (the market) so the walk-forward engine's allocator returns
-    # a 1-vector "weight" — the target exposure for the next holding window.
+    # a 1-vector "weight" - the target exposure for the next holding window.
     asset = str(market.name) if market.name is not None else "asset"
     panel = market.to_frame(name=asset)
 
@@ -527,7 +527,7 @@ def select_risk_off_state(characterization: RegimeCharacterization) -> int:
 
     The overlay must reduce exposure in the genuine high-vol regime, NOT in a
     positionally-chosen state. After canonicalization (ascending mean return,
-    vol tie-break) the LAST state is the highest-MEAN-RETURN regime — which is
+    vol tie-break) the LAST state is the highest-MEAN-RETURN regime - which is
     emphatically not the same as the highest-vol regime. This helper picks the
     risk-off state from the per-regime CHARACTERIZATION by ``argmax`` of the
     conditional volatility, so the overlay always cuts exposure in the regime
@@ -650,8 +650,8 @@ def _fit_filter_exposure_for_window(
     risk_off = (select_risk_off_state(train_char),)
 
     # Build eval features from a window that includes a BOUNDED trailing prefix of
-    # TRAIN (long enough for the slowest causal window — the macro mean uses 6 x
-    # vol_window = 126 bars — plus a safety buffer) so the rolling features are
+    # TRAIN (long enough for the slowest causal window - the macro mean uses 6 x
+    # vol_window = 126 bars - plus a safety buffer) so the rolling features are
     # defined at the first eval bar without an O(n^2) full-history rebuild each fold.
     # Standardize with the TRAIN scaler (never refit on eval), then online-filter the
     # eval rows only.
@@ -697,14 +697,14 @@ def walk_forward_regime_overlay(
     each anchored fold the scaler + Gaussian HMM are refit on the TRAIN window
     ONLY, the risk-off state is the HIGHEST-VOLATILITY regime from the train
     characterization (never a positional last state), the ONLINE FILTER (data
-    ``<= t`` only — never smoothed/Viterbi) labels the upcoming OOS window, and the
+    ``<= t`` only - never smoothed/Viterbi) labels the upcoming OOS window, and the
     decided exposure is applied via the engine's ``shift(1)`` chokepoint with the
     same purge / embargo discipline as the shared
     :func:`~regimehmm.backtest.walk_forward.walk_forward_backtest`. The overlay and
     the buy-and-hold leg are scored on the IDENTICAL post-purge/embargo OOS index.
 
     Because every fold refits on its train window, NO future bar informs either the
-    regime labels or the overlay return on or before any OOS bar — the reported
+    regime labels or the overlay return on or before any OOS bar - the reported
     ``overlay_sharpe`` / ``buyhold_sharpe`` are therefore genuinely out-of-sample,
     not the in-sample numbers a full-window fit would produce.
 
@@ -732,7 +732,7 @@ def walk_forward_regime_overlay(
     seed:
         Master seed for the per-fold HMM fits (deterministic).
     n_restarts:
-        EM restarts per fold (kept small — the OOS sweep refits on every fold, so
+        EM restarts per fold (kept small - the OOS sweep refits on every fold, so
         a handful of seeded restarts is enough for a stable, deterministic fit).
     max_iter:
         EM iteration cap per fold (capped below the full-fit default so the
@@ -740,7 +740,7 @@ def walk_forward_regime_overlay(
     fit_window_cap:
         Maximum number of most-recent TRAIN bars the per-fold HMM is fit on (a
         bounded, strictly-causal recent history; ~2y of daily data by default).
-        The walk-forward stays anchored — only the EM fit window is capped.
+        The walk-forward stays anchored - only the EM fit window is capped.
 
     Returns
     -------
@@ -776,7 +776,7 @@ def walk_forward_regime_overlay(
         # bounded, strictly-causal recent history) so the per-fold refit stays
         # tractable on the hot request path. The walk-forward itself remains anchored
         # (the engine's OOS index, purge and embargo are unchanged); only the EM fit
-        # window is capped — no future bar is ever read.
+        # window is capped - no future bar is ever read.
         train_full = in_sample[asset].astype("float64")
         train_returns = (
             train_full.iloc[len(train_full) - fit_window_cap :]

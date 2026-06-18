@@ -225,7 +225,7 @@ def test_canonical_ordering_is_permutation_invariant(perm: list[int]) -> None:
 
     Start from a reference model with distinct (mean, vol) per state; apply an
     arbitrary permutation of the states; the canonicalized result must be
-    byte-identical to canonicalizing the reference — labels are stable across
+    byte-identical to canonicalizing the reference - labels are stable across
     folds no matter how the fit happened to index its states.
     """
     base_means = np.array([[0.002], [-0.001], [0.0005]], dtype="float64")

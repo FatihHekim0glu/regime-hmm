@@ -7,7 +7,7 @@ from-scratch kernel to ``hmmlearn.GaussianHMM`` to ``1e-6`` on seeded 2- and
 * the per-state Gaussian log emission density (``_compute_log_likelihood``);
 * the smoothed posteriors ``gamma`` and the total sequence log-likelihood
   (``predict_proba`` / ``score``);
-* the Viterbi MAP path (``predict`` / ``decode``) — an exact label match.
+* the Viterbi MAP path (``predict`` / ``decode``) - an exact label match.
 
 To make the comparison apples-to-apples we let ``hmmlearn`` fit, then evaluate our
 kernel on ITS converged parameters (so any difference is in the math, not the EM

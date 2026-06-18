@@ -1,4 +1,4 @@
-"""regimehmm — a market-regime Hidden Markov Model, built honestly.
+"""regimehmm - a market-regime Hidden Markov Model, built honestly.
 
 A from-scratch Gaussian Hidden Markov Model (Hamilton 1989; Ang-Bekaert 2002;
 Rabiner 1989) fit to index returns to CHARACTERIZE persistent market regimes
@@ -7,7 +7,7 @@ whether a regime-timing exposure overlay beats buy-and-hold after costs.
 
 Two headlines, both deliberate:
 
-* Regime CHARACTERIZATION is the real deliverable — the HMM cleanly separates
+* Regime CHARACTERIZATION is the real deliverable - the HMM cleanly separates
   persistent high/low-vol regimes.
 * The regime-timing overlay does NOT reliably beat buy-and-hold OOS after costs,
   and its in-sample edge decays once the Deflated Sharpe (Bailey-Lopez de Prado)
@@ -15,7 +15,7 @@ Two headlines, both deliberate:
 
 LEAKAGE DISCIPLINE: the ONLY tradable regime signal is the ONLINE forward FILTER
 posterior (data <= t). The smoothed (forward-backward) and Viterbi posteriors peek
-ahead and are in-sample EDA ONLY — never tradable.
+ahead and are in-sample EDA ONLY - never tradable.
 
 The package has ZERO import-time side effects and ZERO UI coupling: the same
 functions back the CLI and the hosted FastAPI tool unchanged. Public API is curated

@@ -235,7 +235,7 @@ def test_characterization_is_relabeling_invariant(perm: list[int]) -> None:
     BOTH by an arbitrary permutation ``p`` (as a raw fit would index its states),
     derive ``order`` straight from the raw model via :func:`canonical_order`, then
     relabel the raw series back to canonical via :func:`relabel_states`. The
-    per-regime characterization must be byte-identical to the canonical original —
+    per-regime characterization must be byte-identical to the canonical original,
     the headline stats do not depend on the fit's arbitrary state indexing.
     """
     rng = np.random.default_rng(123)

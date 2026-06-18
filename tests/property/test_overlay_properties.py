@@ -4,7 +4,7 @@ The leakage discipline of the overlay rests on four invariants, each pinned here
 
 1. **Filtered-only signal.** The overlay's exposure is a row-wise map of the
    ONLINE FILTER posterior, so the exposure at ``t`` depends only on
-   ``filtered_posterior[t]`` — never the smoothed/Viterbi posterior, which peeks
+   ``filtered_posterior[t]`` - never the smoothed/Viterbi posterior, which peeks
    ahead. We verify this through the filter's own prefix-determinism: perturbing
    returns after ``t`` cannot move the exposure (or the realized overlay return)
    on or before ``t``.
@@ -52,7 +52,7 @@ def _fit_filter_exposure(returns: pd.Series, *, seed: int = 7) -> tuple[np.ndarr
 
     The risk-off state is the highest-variance fitted state (the genuine high-vol
     regime), identified from the model. For the LEAKAGE invariants tested here the
-    specific risk-off index is immaterial — only that the exposure is a causal,
+    specific risk-off index is immaterial - only that the exposure is a causal,
     row-wise map of the online-filter posterior. Features are the standardized
     returns; the no-lookahead properties compare prefixes only, so fitting on the
     full window is fine.

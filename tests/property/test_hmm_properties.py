@@ -3,7 +3,7 @@
 The headline invariant is ONLINE-FILTER NO-LOOKAHEAD: the filtered posterior at
 time ``t`` must be invariant to any perturbation of the returns AFTER ``t``
 (future-perturbation invariance / prefix-determinism). This is what makes the
-filtered posterior — and ONLY it — a legitimate out-of-sample regime signal;
+filtered posterior - and ONLY it - a legitimate out-of-sample regime signal;
 smoothed/Viterbi posteriors fail it by construction.
 
 Also pinned here: posterior rows sum to 1 (filtered and smoothed), transition rows
