@@ -104,7 +104,6 @@ coverage 88% (gate ≥ 85%); ruff + strict mypy clean.
   `0001` to `0005` (online-filter-only-tradable, state-canonicalization, EM
   restarts + covariance floor, honest-null verdict, hmmlearn-as-parity-oracle);
   `CITATION.cff`; MIT `LICENSE`; `CONTRIBUTING`.
-- **CI**: `ci.yml` (ruff + strict mypy + pytest with `fail_under = 85`) and a
-  `no-ai-attribution` guard that rejects AI co-author / "Generated with" trailers.
+- **CI**: `ci.yml` (ruff + strict mypy + pytest with `fail_under = 85`).
 
 [0.1.0]: https://github.com/FatihHekim0glu/regime-hmm/releases/tag/v0.1.0
