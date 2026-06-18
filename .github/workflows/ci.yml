@@ -37,11 +37,23 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Lint (ruff)
-        run: uv run ruff check src
+        run: uv run ruff check src tests
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check src tests
 
       - name: Type-check (mypy)
         # Strict gate: a clean strict-mypy run is a hard requirement per the brief.
         run: uv run mypy src
 
       - name: Test (pytest + coverage gate)
-        run: uv run pytest -q --cov=regimehmm --cov-report=term --cov-fail-under=85
+        # Runs the whole suite (unit, property, parity, slow, integration) so the
+        # coverage gate sees the orchestration and per-fold walk-forward paths too.
+        run: uv run pytest -q --cov=regimehmm --cov-report=term --cov-report=xml --cov-fail-under=85
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
