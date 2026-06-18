@@ -118,6 +118,7 @@ def test_smoothed_posterior_rows_and_xi_sum_to_one(seed: int, n_states: int, n_o
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @given(
     seed=st.integers(min_value=0, max_value=2_000),
     n_states=st.integers(min_value=2, max_value=3),

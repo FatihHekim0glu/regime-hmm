@@ -131,6 +131,7 @@ def test_viterbi_path_matches_hmmlearn(n_states: int) -> None:
 
 
 @pytest.mark.parity
+@pytest.mark.slow
 @pytest.mark.parametrize("n_states", [2, 3])
 def test_em_reaches_comparable_optimum_to_hmmlearn(n_states: int) -> None:
     """Our Baum-Welch EM converges to a log-likelihood on par with ``hmmlearn``.

@@ -95,6 +95,7 @@ def test_exposure_is_rowwise_map_of_posterior(seed: int) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @given(cut_frac=st.floats(min_value=0.3, max_value=0.8))
 @_SETTINGS
 def test_overlay_returns_future_perturbation_invariant(
@@ -129,6 +130,7 @@ def test_overlay_returns_future_perturbation_invariant(
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @given(cost_bps=st.floats(min_value=0.0, max_value=50.0))
 @_SETTINGS
 def test_overlay_and_buyhold_share_identical_oos_index(
@@ -185,6 +187,7 @@ def test_cost_grid_sharpe_non_increasing(seed: int) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @given(cut_frac=st.floats(min_value=0.55, max_value=0.85))
 @_SETTINGS
 def test_walk_forward_overlay_identical_oos_index_and_no_lookahead(
