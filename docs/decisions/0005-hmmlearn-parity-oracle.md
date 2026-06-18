@@ -7,8 +7,8 @@
 
 ## Context
 
-The HMM kernel — emission log-density, log-space forward-backward, Baum-Welch
-M-step, Viterbi, and the online filter — is hand-rolled in pure numpy/scipy. Hand-
+The HMM kernel, emission log-density, log-space forward-backward, Baum-Welch
+M-step, Viterbi, and the online filter, is hand-rolled in pure numpy/scipy. Hand-
 rolled numerical code is exactly where silent bugs hide: an off-by-one in the
 `xi` pair-marginals, a missing `logsumexp` normalization, a transposed transition
 matrix. Reasoning alone is not enough; the kernel needs to be pinned against an
@@ -21,7 +21,7 @@ scratch), and it would also drag a heavier dependency into the deployed containe
 for no runtime benefit.
 
 There is also a subtle correctness reason not to ship it: if the production code and
-the test oracle are the same library, the parity test is vacuous — it can only ever
+the test oracle are the same library, the parity test is vacuous, it can only ever
 confirm "the code equals itself."
 
 ## Decision
@@ -49,7 +49,7 @@ Dependency hygiene is enforced:
 
 - **Positive.** The from-scratch kernel is verified against an independent reference
   to `1e-6`, so a regression in the hand-rolled math fails the parity suite
-  immediately — and the oracle is genuinely independent of the production code, so
+  immediately, and the oracle is genuinely independent of the production code, so
   the test has teeth.
 - **Positive.** The runtime/container footprint stays lean (numpy/pandas/scipy/
   sklearn); the deployed tool fits at request time without `hmmlearn`.

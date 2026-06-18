@@ -28,7 +28,7 @@ an oracle and against golden regressions.
 optimizations from distinct initializations and keeps the one with the highest
 training log-likelihood. The restart seeds are reproducible PCG64 **substreams**
 spawned from the master seed (`regimehmm._rng.spawn_substreams`), so a fixed master
-seed reproduces the entire fit — including which restart wins — byte-for-byte.
+seed reproduces the entire fit, including which restart wins, byte-for-byte.
 
 **A strictly positive covariance floor.** Every M-step re-estimated covariance is
 passed through `floor_covariance` (default `floor = 1e-6`): for `diag` covariances
@@ -43,7 +43,7 @@ decrease is a bug and fails loudly.
 
 ## Consequences
 
-- **Positive.** Fits are reproducible and robust to local optima; the same seed
+- **Positive.** Fits are reproducible and resistant to local optima; the same seed
   always yields the same model, and the kept fit matches the `hmmlearn` oracle to
   `1e-6` ([ADR-0005](0005-hmmlearn-parity-oracle.md)).
 - **Positive.** The covariance floor makes the emission model well-defined for every

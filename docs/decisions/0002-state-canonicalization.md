@@ -11,8 +11,7 @@ A raw HMM fit assigns **arbitrary integer indices** to its hidden states. Which
 physical regime ends up labelled `0` versus `2` is an accident of restart
 initialization: the "high-vol crisis" regime might be state 2 in one fold and state
 0 in the next. EM with seeded restarts ([ADR-0003](0003-em-restarts-covariance-floor.md))
-makes this worse, because the kept restart — and therefore the label assignment —
-can differ across folds even for the same data.
+makes this worse, because the kept restart, and therefore the label assignment, can differ across folds even for the same data.
 
 That arbitrariness is poison for everything downstream:
 
@@ -36,7 +35,7 @@ The convention this fixes:
 - the **highest-index** state (`n_states - 1`) is the risk-off / crisis regime the
   overlay cuts exposure in.
 
-Canonicalization is a relabelling only — it is a permutation, so it changes no
+Canonicalization is a relabelling only, it is a permutation, so it changes no
 likelihood, no posterior, and no filtered path; it just renames states.
 
 ## Consequences
@@ -46,7 +45,7 @@ likelihood, no posterior, and no filtered path; it just renames states.
   per-regime stats are identical. Golden regressions on per-regime numbers become
   meaningful.
 - **Positive.** The overlay can name the risk-off state structurally
-  (`n_states - 1`) instead of re-deriving it from a look-ahead label — so the
+  (`n_states - 1`) instead of re-deriving it from a look-ahead label, so the
   "which state is risky" decision is itself leakage-free.
 - **Positive.** Serialized models are comparable across runs because the label
   ordering is deterministic.

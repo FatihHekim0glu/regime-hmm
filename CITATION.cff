@@ -3,9 +3,9 @@ message: "If you use this software, please cite it as below."
 title: "regime-hmm: A from-scratch Gaussian HMM for honest market-regime characterization"
 abstract: >-
   A pure, typed Python implementation of a Gaussian Hidden Markov Model for
-  market-regime characterization — emission log-density, log-space
+  market-regime characterization, emission log-density, log-space
   forward-backward, Baum-Welch EM with seeded restarts, Viterbi, and an online
-  forward filter — parity-tested to 1e-6 against hmmlearn. The online forward
+  forward filter, parity-tested to 1e-6 against hmmlearn. The online forward
   filter (data up to t only) is the sole tradable regime signal; smoothed and
   Viterbi posteriors peek ahead and are exploratory-only. A regime-conditioned
   exposure overlay is tested out-of-sample against buy-and-hold under realistic

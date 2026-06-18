@@ -14,7 +14,7 @@ A Gaussian HMM yields three different "what regime is it" answers:
 - the **smoothed** (forward-backward) posterior `gamma_t = p(state_t | x_1..x_T)`,
   which conditions on the **whole** sample, including the future;
 - the **Viterbi** MAP path, the single most likely state *sequence* over the whole
-  sample — also a function of the future.
+  sample, also a function of the future.
 
 The smoothed and Viterbi answers are far cleaner: they de-noise the regime path
 using hindsight, so a backtest built on them looks spectacular. That is exactly the
@@ -50,11 +50,11 @@ This is enforced structurally, not by convention:
   honest-null result cannot be an artifact of leakage. This is the whole credibility
   of the project.
 - **Positive.** Keeping smoothed/Viterbi as first-class EDA lets a reader *see* how
-  much cleaner the hindsight path is — which is precisely the intuition for why
+  much cleaner the hindsight path is, which is precisely the intuition for why
   leaking it would inflate a backtest.
 - **Cost.** The filtered path is noisier than the smoothed one, so the overlay
   trades more and characterization-from-filtered-labels is slightly less crisp than
   it would be from `gamma`. That is the correct, honest cost of not cheating.
-- **Risk addressed.** "Smoothed-posterior leakage" — the project's top risk — is
+- **Risk addressed.** "Smoothed-posterior leakage", the project's top risk, is
   eliminated by making the filter the only signal and property-testing the
   no-lookahead invariant.
