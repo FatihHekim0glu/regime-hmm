@@ -149,7 +149,7 @@ def test_select_risk_off_is_argmax_vol_not_last_state() -> None:
     After canonicalization the LAST state is highest-MEAN-return. A high-mean state
     can carry low vol; the risk-off overlay must still target the max-vol regime.
     Here state 2 is the highest mean (canonical last) but state 0 is the highest vol
-    — risk-off must select state 0, never the positional last state.
+    - risk-off must select state 0, never the positional last state.
     """
     char = _characterization(
         (

@@ -4,7 +4,7 @@ Two layers:
 
 * The orchestration functions (:func:`~regimehmm.cli.fit`,
   :func:`~regimehmm.cli.decode`) are exercised DIRECTLY on the deterministic
-  synthetic regime-switch generator — a tiny offline fit -> decode smoke run that
+  synthetic regime-switch generator - a tiny offline fit -> decode smoke run that
   proves the pipeline wires up end-to-end and exits cleanly. These need no Typer.
 * The Typer app surface (``build_app``, ``--help``, a ``decode`` CliRunner
   invocation) is exercised through :class:`typer.testing.CliRunner` when Typer is

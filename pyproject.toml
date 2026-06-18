@@ -109,7 +109,6 @@ select = [
 ]
 ignore = [
     "E501",    # line length handled by formatter
-    "PD901",   # allow `df` as a variable name in compute kernels
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -146,6 +145,14 @@ module = ["pandas.*"]
 follow_imports = "skip"
 disallow_untyped_defs = false
 
+# Typer's command decorators are untyped third-party callables, so the strict
+# `disallow_untyped_decorators` check fires on every `@app.command(...)` in the
+# thin CLI layer. Relax just that check for the CLI module (its own functions stay
+# fully typed); the compute core keeps the strict gate.
+[[tool.mypy.overrides]]
+module = ["regimehmm.cli"]
+disallow_untyped_decorators = false
+
 [[tool.mypy.overrides]]
 module = [
     "scipy.*",
@@ -181,6 +188,13 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["regimehmm"]
+# The CLI and the live Polygon HTTP provider are thin I/O boundaries driven by the
+# integration suite (typer entrypoints, real network), not the unit gate. Omit them
+# so the coverage gate measures the pure compute core.
+omit = [
+    "src/regimehmm/cli.py",
+    "src/regimehmm/data_providers/polygon.py",
+]
 
 [tool.coverage.report]
 fail_under = 85

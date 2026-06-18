@@ -4,8 +4,8 @@ The per-state emission model is a multivariate Gaussian over the (scaled) featur
 vector at each time step. This module computes the LOG emission density
 ``log p(x_t | state=k)`` for every observation and state, supporting both
 ``"diag"`` (independent features) and ``"full"`` covariance parameterizations. A
-strictly positive covariance FLOOR is applied so a (near-)degenerate state — one
-that collapses onto a handful of identical points during EM — cannot drive the
+strictly positive covariance FLOOR is applied so a (near-)degenerate state - one
+that collapses onto a handful of identical points during EM - cannot drive the
 log-density to ``+inf`` or produce a singular covariance.
 
 The kernel is pure numpy/scipy: no global RNG, no hmmlearn. ``hmmlearn`` is a

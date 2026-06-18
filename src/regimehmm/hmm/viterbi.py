@@ -1,4 +1,4 @@
-"""Viterbi MAP decoding — EDA ONLY, never tradable.
+"""Viterbi MAP decoding - EDA ONLY, never tradable.
 
 The Viterbi algorithm returns the single most likely STATE SEQUENCE given the
 ENTIRE observation sequence, ``argmax_{s_1..s_T} p(s_1..s_T | x_1..x_T)``. Because
@@ -23,7 +23,7 @@ from regimehmm.hmm.kernel import gaussian_log_density
 
 
 def viterbi_path(model: HMMModel, observations: FloatArray) -> FloatArray:
-    r"""Most likely hidden-state path (Viterbi MAP decoding) — EDA only.
+    r"""Most likely hidden-state path (Viterbi MAP decoding) - EDA only.
 
     Runs the log-space Viterbi recursion to return the ``(n_obs,)`` integer state
     sequence maximizing the joint posterior over the whole sequence:

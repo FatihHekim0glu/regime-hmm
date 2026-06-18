@@ -1,4 +1,4 @@
-r"""Online forward filter — the ONLY tradable, no-lookahead regime posterior.
+r"""Online forward filter - the ONLY tradable, no-lookahead regime posterior.
 
 This module is the heart of the project's leakage discipline. The online filter
 posterior at time ``t``,
@@ -7,7 +7,7 @@ posterior at time ``t``,
 
     p(\text{state}_t = k \mid x_1, \dots, x_t),
 
-conditions on data UP TO AND INCLUDING ``t`` only — never the future. It is the
+conditions on data UP TO AND INCLUDING ``t`` only - never the future. It is the
 normalized forward message ``alpha_t`` and is the **only** regime signal that may
 drive an out-of-sample trade. By contrast the smoothed (forward-backward)
 posterior and the Viterbi path both use the WHOLE sample and therefore PEEK AHEAD;
@@ -109,13 +109,13 @@ def online_filter(model: HMMModel, observations: FloatArray) -> FloatArray:
         f_t(k) = p(\text{state}_t = k \mid x_1, \dots, x_t),
 
     each row computed by the log-space forward recursion normalized AT EACH STEP.
-    Row ``t`` depends on observations ``x_1..x_t`` ONLY — it is invariant to any
+    Row ``t`` depends on observations ``x_1..x_t`` ONLY - it is invariant to any
     ``x_s`` with ``s > t``.
 
     NO-LOOKAHEAD GUARANTEE (property-tested): perturbing the returns AFTER time
     ``t`` leaves ``f_t`` byte-identical (future-perturbation invariance /
-    prefix-determinism). This is what makes the filtered posterior — and only the
-    filtered posterior — a legitimate out-of-sample regime signal. Smoothed and
+    prefix-determinism). This is what makes the filtered posterior - and only the
+    filtered posterior - a legitimate out-of-sample regime signal. Smoothed and
     Viterbi posteriors fail this test and are non-tradable.
 
     Parameters

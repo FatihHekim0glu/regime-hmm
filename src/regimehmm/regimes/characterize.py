@@ -1,4 +1,4 @@
-"""Per-regime characterization — the project's real deliverable.
+"""Per-regime characterization - the project's real deliverable.
 
 Given a (canonicalized) decoded regime series and the realized returns, this module
 computes the per-regime descriptive statistics that ARE the honest headline of the
@@ -105,7 +105,7 @@ def characterize_regimes(
     :mod:`regimehmm.regimes.canonicalize`) so the output is relabeling-invariant
     across folds (property-tested). The decoded ``states`` should come from the
     smoothed/Viterbi decoder for in-sample EDA, or the online filter for an honest
-    out-of-sample picture — but characterization itself is descriptive, not a
+    out-of-sample picture - but characterization itself is descriptive, not a
     tradable signal.
 
     Parameters

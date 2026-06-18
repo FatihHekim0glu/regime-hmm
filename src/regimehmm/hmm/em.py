@@ -51,9 +51,9 @@ def fit_hmm(
     initializations and returns the :class:`~regimehmm.hmm.filter.HMMModel` with
     the highest training log-likelihood. Each restart alternates:
 
-    * **E-step** — :func:`regimehmm.hmm.forward_backward.forward_backward` to get
+    * **E-step** - :func:`regimehmm.hmm.forward_backward.forward_backward` to get
       the smoothed posteriors ``gamma`` and pair-marginals ``xi``;
-    * **M-step** — re-estimate ``pi = gamma_1``, ``A`` from summed ``xi``, the
+    * **M-step** - re-estimate ``pi = gamma_1``, ``A`` from summed ``xi``, the
       per-state means as ``gamma``-weighted observation averages, and the
       covariances as ``gamma``-weighted second moments, FLOORED via
       :func:`regimehmm.hmm.kernel.floor_covariance`.
@@ -63,7 +63,7 @@ def fit_hmm(
 
     LEAKAGE NOTE: ``fit_hmm`` must be called on the TRAIN fold only. The fitted
     model is then consumed by the ONLINE filter (:mod:`regimehmm.hmm.filter`) to
-    label the out-of-sample window — never by the smoothed/Viterbi decoders.
+    label the out-of-sample window - never by the smoothed/Viterbi decoders.
 
     REPRODUCIBILITY: restart initializations draw from
     :func:`regimehmm._rng.spawn_substreams(seed, n_restarts)`, so a fixed ``seed``

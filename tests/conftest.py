@@ -2,17 +2,17 @@
 
 Every fixture is deterministic (driven by :func:`regimehmm._rng.make_rng`) and
 returns pandas/numpy objects, so tests across the suite share identical synthetic
-data with known structure. The whole suite runs OFFLINE on these fixtures — no
+data with known structure. The whole suite runs OFFLINE on these fixtures - no
 test touches the network.
 
-- ``one_factor`` — a single-state, well-behaved Gaussian return series (the "no
+- ``one_factor`` - a single-state, well-behaved Gaussian return series (the "no
   regimes" control: a Gaussian HMM should find one dominant state / weak
   switching).
-- ``regime_switch`` — a 2/3-state PERSISTENT-vol return series from the synthetic
+- ``regime_switch`` - a 2/3-state PERSISTENT-vol return series from the synthetic
   generator, carrying its ground-truth hidden states (the core fixture: the HMM
   must recover the persistent high/low-vol regimes, and the timing overlay must
   NOT beat buy-and-hold OOS after costs).
-- ``pure_noise`` — i.i.d. Gaussian returns with no persistence (the null: no
+- ``pure_noise`` - i.i.d. Gaussian returns with no persistence (the null: no
   meaningful regime structure to find).
 
 Importing this module has no side effects beyond fixture registration.
@@ -40,7 +40,7 @@ def one_factor() -> pd.Series:
     """Single-state, well-behaved Gaussian return series (the no-regime control).
 
     Length ``1000``. A stationary Gaussian return stream with a single (mean, vol)
-    — no persistent vol switching — so a fitted HMM should collapse toward one
+    - no persistent vol switching - so a fitted HMM should collapse toward one
     dominant state and the timing overlay has nothing to exploit. Indexed by a
     business-day :class:`pandas.DatetimeIndex`.
     """

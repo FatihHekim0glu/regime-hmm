@@ -43,7 +43,7 @@ CI runs the full matrix on Python 3.11, 3.12, and 3.13.
 - **No smoothed-posterior leakage.** The ONLY tradable regime signal is the ONLINE
   forward filter (`regimehmm.hmm.filter`), whose posterior at `t` uses data `<= t`
   only. The smoothed (forward-backward) and Viterbi posteriors peek ahead and are
-  in-sample EDA ONLY — never an out-of-sample label or signal.
+  in-sample EDA ONLY, never an out-of-sample label or signal.
 - **`hmmlearn` is a dev-only parity oracle.** It is in the `dev` extra and the test
   suite, never in `data` and never imported by `src/` or the API container. The
   production kernel is pure numpy/scipy.
@@ -54,9 +54,8 @@ CI runs the full matrix on Python 3.11, 3.12, and 3.13.
 ## Commit hygiene
 
 - Use clear, present-tense commit messages.
-- **Do not** add AI-attribution trailers — no `Co-Authored-By: Claude`,
-  no "Generated with Claude", no robot-emoji attribution lines. The
-  `.github/workflows/no-ai-attribution.yml` guard fails any PR that contains them.
+- **Do not** add automated co-author or generated-with trailers to commit
+  messages or pull requests.
 
 ## Pull requests
 

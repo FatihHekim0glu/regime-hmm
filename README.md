@@ -1,12 +1,12 @@
 # regime-hmm
 
 A from-scratch **Gaussian Hidden Markov Model** for **market-regime
-characterization** — fit to index returns to label persistent regimes (low-vol
+characterization**, fit to index returns to label persistent regimes (low-vol
 bull / high-vol bear / crisis), then an **honest** out-of-sample test of whether a
 regime-timing exposure overlay beats buy-and-hold after costs.
 
 > **Honest headline.** The HMM cleanly characterizes persistent high/low-vol
-> regimes — *that* is the deliverable. The regime-timing exposure overlay does
+> regimes, *that* is the deliverable. The regime-timing exposure overlay does
 > **not** reliably beat buy-and-hold out-of-sample after costs, and its in-sample
 > edge **decays** once the Deflated Sharpe (with the correct effective `n_trials`)
 > is applied. Regime characterization is the win; timing them is not free money.
@@ -14,7 +14,7 @@ regime-timing exposure overlay beats buy-and-hold after costs.
 ## The one rule that matters: no smoothed-posterior leakage
 
 The only **tradable** regime signal is the **online forward filter** posterior,
-`p(state_t | x_1..x_t)` — it uses data **up to `t` only**. The smoothed
+`p(state_t | x_1..x_t)`, it uses data **up to `t` only**. The smoothed
 (forward-backward) and Viterbi posteriors condition on the *whole* sample, so they
 **peek ahead**: they are in-sample EDA **only** and are never turned into an
 out-of-sample label or signal. This is guarded and property-tested
@@ -30,7 +30,7 @@ different volatilities. The numbers below are produced by the
 [Reproduce](#reproduce) commands (`--n-states 2 --feature-set returns --seed 7`)
 and are deterministic for a fixed seed.
 
-**1. Characterization — the win.** A 2-state fit recovers the two persistent
+**1. Characterization, the win.** A 2-state fit recovers the two persistent
 regimes cleanly (online-filtered, canonical order, annualized):
 
 | Regime | Mean | Vol | Persistence | Expected duration | Frequency |
@@ -42,13 +42,13 @@ Both regimes are highly persistent (~0.98, multi-month expected dwell times), th
 risk-off regime carries roughly double the volatility and a sharply negative mean,
 and the labels are stable across folds (canonical ascending-mean ordering,
 [ADR-0002](docs/decisions/0002-state-canonicalization.md)). The overlay reduces
-exposure in the **highest-conditional-volatility** regime — selected from the
+exposure in the **highest-conditional-volatility** regime, selected from the
 per-regime characterization (`argmax` of the conditional vol), **not** by state
 position. After canonicalization the *last* state is the highest-*mean*-return
 regime, which is generally **not** the highest-vol one, so a positional pick would
 target the wrong regime.
 
-**2. Timing — the honest null (genuinely out-of-sample).** The regime-conditioned
+**2. Timing, the honest null (genuinely out-of-sample).** The regime-conditioned
 exposure overlay cuts exposure in the **highest-volatility** regime (selected from
 the per-regime characterization, **not** by state position), using the online
 filter + `shift(1)` at 10 bps per side. Critically, the reported OOS Sharpe numbers
@@ -56,12 +56,12 @@ come from an **anchored walk-forward** (`walk_forward_regime_overlay`): on every
 fold the StandardScaler **and** the HMM are refit on the **train window only**, the
 online filter labels the upcoming window, and the overlay and buy-and-hold are
 scored on the **identical** post-purge/embargo OOS index. So these are honest
-out-of-sample numbers — never an in-sample fit relabeled "OOS".
+out-of-sample numbers, never an in-sample fit relabeled "OOS".
 
 On any single finite OOS realization the overlay's point Sharpe lands either side of
 buy-and-hold, but the **Sharpe gap is never significantly positive** under
-Memmel-Jobson-Korkie, and the Deflated Sharpe — deflated by the full 36-trial grid
-**and a real, non-degenerate cross-trial Sharpe variance** (never `0.0`) — never
+Memmel-Jobson-Korkie, and the Deflated Sharpe, deflated by the full 36-trial grid
+**and a real, non-degenerate cross-trial Sharpe variance** (never `0.0`), never
 clears its threshold. The pure-function verdict is therefore structurally
 `no_timing_edge`: it cannot claim a "timing edge" when the gap is statistically
 indistinguishable from zero (or negative). That is the honest finding the
@@ -70,30 +70,30 @@ literature predicts, mechanically enforced by the verdict
 
 ## What's in the box
 
-- **`hmm/`** — a pure numpy/scipy Gaussian HMM: emission `kernel` (diag/full
+- **`hmm/`**: a pure numpy/scipy Gaussian HMM: emission `kernel` (diag/full
   covariance with a floor), log-space `forward_backward`, Baum-Welch `em` (seeded
   restarts, monotonic log-likelihood), `viterbi` (EDA-only), and the online
   `filter` (the only tradable posterior) with the frozen `HMMModel`.
-- **`regimes/`** — `canonicalize` (stable cross-fold state labels) and
+- **`regimes/`**: `canonicalize` (stable cross-fold state labels) and
   `characterize` (per-regime mean / vol / persistence / duration / drawdown).
-- **`backtest/`** — the reused no-lookahead walk-forward engine plus the regime
+- **`backtest/`**: the reused no-lookahead walk-forward engine plus the regime
   `overlay` (filtered-regime exposure, `shift(1)` chokepoint, per-side bps costs,
   cost sensitivity grid) vs buy-and-hold.
-- **`evaluation/`** — Probabilistic + Deflated Sharpe (`dsr`),
+- **`evaluation/`**: Probabilistic + Deflated Sharpe (`dsr`),
   Jobson-Korkie-Memmel + block bootstrap (`comparison`), and the pure-function
   timing `verdict` (`no_timing_edge` / `marginal` / `timing_edge`).
-- **`data.py`** — a seeded synthetic regime-switch generator (the entire test suite
-  runs on it, no network) plus a Polygon-EOD → synthetic loader.
-- **`plots.py`** — lazy Plotly figures (regime-shaded series, OOS equity overlay).
-- **`analysis.py`** — `run_regime_analysis(...)`, the single end-to-end entrypoint
+- **`data.py`**: a seeded synthetic regime-switch generator (the entire test suite
+  runs on it, no network) plus a Polygon-EOD to synthetic loader.
+- **`plots.py`**: lazy Plotly figures (regime-shaded series, OOS equity overlay).
+- **`analysis.py`**: `run_regime_analysis(...)`, the single end-to-end entrypoint
   the hosted backend calls. A full-window fit drives the **in-sample regime figure +
   characterization table** (the display layer); the reported **OOS Sharpe numbers**
   come from the genuinely-out-of-sample anchored walk-forward
   (`walk_forward_regime_overlay`: per-fold train-only scaler + HMM fit, online-filter
-  OOS labels, max-vol risk-off, identical OOS index) → Memmel-JK + Deflated Sharpe
-  (full `n_trials`, real cross-trial variance) → honest verdict. Plus
+  OOS labels, max-vol risk-off, identical OOS index) then Memmel-JK + Deflated Sharpe
+  (full `n_trials`, real cross-trial variance) then the honest verdict. Plus
   `assemble_regime_figures(...)` for the two frontend Plotly figures.
-- **`cli.py`** — a Typer `fit` / `decode` / `backtest` CLI.
+- **`cli.py`**: a Typer `fit` / `decode` / `backtest` CLI.
 
 For how the layers fit together and the invariants they guarantee, see
 [`docs/DESIGN.md`](docs/DESIGN.md) and the numbered ADRs in
@@ -119,7 +119,7 @@ the scaler + HMM on each fold's **train window only**, derives the regime labels
 from the **online filter** (never smoothed/Viterbi), applies `shift(1)`, and scores
 both legs on the identical post-purge/embargo OOS index. The full-window fit kept on
 the result (`result.states`, `result.model`) is the **in-sample regime map for the
-figure only** — it is never reported as an OOS number; the per-fold OOS labels live
+figure only**, it is never reported as an OOS number; the per-fold OOS labels live
 in `result.oos_states`.
 
 The `verdict` is a **pure function** of the OOS inference: it is structurally
@@ -135,7 +135,7 @@ uv venv
 uv pip install -e '.[data,viz,dev]'
 ```
 
-`hmmlearn` (in the `dev` extra) is a **parity oracle only** — the test suite checks
+`hmmlearn` (in the `dev` extra) is a **parity oracle only**, the test suite checks
 the hand-rolled kernel against it to `1e-6`. It is **not** a runtime dependency and
 is never imported by `src/` or the deployed API
 ([ADR-0005](docs/decisions/0005-hmmlearn-parity-oracle.md)).
@@ -143,7 +143,7 @@ is never imported by `src/` or the deployed API
 ## Reproduce
 
 Every number above is regenerated by the test suite and the CLI from a fixed seed
-(no network — the synthetic generator is the default data source):
+(no network, the synthetic generator is the default data source):
 
 ```bash
 # 1. Environment
@@ -191,27 +191,27 @@ coverage ≥ 85%, ruff + strict mypy clean):
 
 ## Limitations
 
-- **Smoothed / Viterbi posteriors are non-tradable** — they condition on the whole
+- **Smoothed / Viterbi posteriors are non-tradable**, they condition on the whole
   sample and so peek ahead. Only the online filter may drive an out-of-sample
   signal; smoothed/Viterbi outputs are exploratory (EDA) only. This is the central
   design constraint, not an afterthought ([ADR-0001](docs/decisions/0001-online-filter-only-tradable.md)).
-- **Survivorship bias is N/A *today* — but is a hard gate for any future
+- **Survivorship bias is N/A *today*, but is a hard gate for any future
   cross-sectional overlay.** The current analysis runs on a single index series
   (synthetic, or one ticker such as SPY), not a cross-section selected on survival,
   so there is no universe-construction step in which a survivorship screen could
   enter and the usual cross-sectional survivorship caveat does not apply.
   **Forward-looking requirement:** any future cross-sectional stock overlay (e.g.
   ranking or selecting across an S&P 500 constituent set) **MUST** route its
-  universe through the point-in-time `sp500_universe` builder — reconstructing the
+  universe through the point-in-time `sp500_universe` builder, reconstructing the
   constituents *as known on each rebalance date*, never today's surviving members.
   Using a present-day membership list to backtest the past silently injects
   survivorship bias and would invalidate the OOS discipline this library exists to
   enforce.
-- **The timing overlay is the honest null, not a product** — its in-sample edge
+- **The timing overlay is the honest null, not a product**, its in-sample edge
   decays out-of-sample once the Deflated Sharpe with the full effective `n_trials`
   (= 36 = 3 `n_states` × 3 feature sets × 4 cost levels) is applied. Regime
   *characterization* is the deliverable ([ADR-0004](docs/decisions/0004-honest-timing-null.md)).
-- **Single-asset, Gaussian-emission HMM** — emissions are Gaussian over a small
+- **Single-asset, Gaussian-emission HMM**, emissions are Gaussian over a small
   causal feature set; fat tails and asymmetric regime transitions beyond a
   first-order Markov chain are out of scope. The model is fit at request time on a
   small panel, not pre-trained.
@@ -220,20 +220,20 @@ coverage ≥ 85%, ruff + strict mypy clean):
 
 - Hamilton, J. D. (1989). *A New Approach to the Economic Analysis of
   Nonstationary Time Series and the Business Cycle.* **Econometrica** 57(2),
-  357–384. (Markov-switching model of the macro cycle.)
+  357 to 384. (Markov-switching model of the macro cycle.)
 - Ang, A., & Bekaert, G. (2002). *International Asset Allocation with Regime
-  Shifts.* **Review of Financial Studies** 15(4), 1137–1187. (Regimes in asset
+  Shifts.* **Review of Financial Studies** 15(4), 1137 to 1187. (Regimes in asset
   returns; timing is hard.)
 - Rabiner, L. R. (1989). *A Tutorial on Hidden Markov Models and Selected
-  Applications in Speech Recognition.* **Proceedings of the IEEE** 77(2), 257–286.
-  (Forward-backward, Baum-Welch, Viterbi — the algorithms implemented here.)
+  Applications in Speech Recognition.* **Proceedings of the IEEE** 77(2), 257 to 286.
+  (Forward-backward, Baum-Welch, Viterbi, the algorithms implemented here.)
 - Bailey, D. H., & López de Prado, M. (2014). *The Deflated Sharpe Ratio:
   Correcting for Selection Bias, Backtest Overfitting, and Non-Normality.*
-  **The Journal of Portfolio Management** 40(5), 94–107. (The multiplicity
+  **The Journal of Portfolio Management** 40(5), 94 to 107. (The multiplicity
   correction the verdict applies.)
 - Memmel, C. (2003). *Performance Hypothesis Testing with the Sharpe Ratio.*
-  **Finance Letters** 1, 21–23. (Corrected Jobson-Korkie Sharpe-difference test.)
+  **Finance Letters** 1, 21 to 23. (Corrected Jobson-Korkie Sharpe-difference test.)
 
 ## License
 
-MIT — see `LICENSE`.
+MIT, see `LICENSE`.

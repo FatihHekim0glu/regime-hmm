@@ -21,7 +21,7 @@ Three statistical facts make that narration dishonest:
 - the right test is a **Sharpe-difference** test (Memmel-corrected Jobson-Korkie),
   and on this data it is insignificant;
 - searching a grid of `n_states` × feature sets × cost levels inflates the best
-  observed Sharpe — the **Deflated Sharpe** (Bailey-López de Prado) corrects for
+  observed Sharpe, the **Deflated Sharpe** (Bailey-López de Prado) corrects for
   exactly this selection, and the correct effective `n_trials` is the **size of the
   whole grid**, not 1.
 
@@ -57,14 +57,13 @@ multiplicity can never be silently collapsed to 1.
   flip the verdict to `timing_edge` is for the overlay to *actually* beat
   buy-and-hold with a Sharpe gap that is both significant and survives 36-trial
   deflation. On the synthetic data it does not, so the verdict is `no_timing_edge`
-  (regression-pinned), even in runs where the raw JK p-value is small — because
+  (regression-pinned), even in runs where the raw JK p-value is small, because
   there the Sharpe gap is *negative* (the overlay under-performs).
 - **Positive.** The verdict truth table is unit-tested over the full
   `(jk_pvalue, deflated_sharpe, sharpe_diff)` quadrant, including NaN inputs (NaN
   fails its positivity check, collapsing to `no_timing_edge`).
 - **Cost.** Every configuration axis the library exposes (states, features, costs)
-  *correctly* enlarges `n_trials` and deflates harder. Exploring more is not free —
-  which is the point. Adding an axis without updating the grids would understate the
+  *correctly* enlarges `n_trials` and deflates harder. Exploring more is not free, which is the point. Adding an axis without updating the grids would understate the
   deflation, so the grids live next to the entrypoint and feed both the analysis and
   the count.
 - **Honest by construction.** The project ships a null result and is *engineered* to

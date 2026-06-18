@@ -24,7 +24,7 @@ see the numbered ADRs in [`docs/decisions/`](decisions/).
 **Non-goals**
 
 - Beating buy-and-hold. The honest finding is that the regime-timing overlay does
-  not, after costs, by a significant margin — and its in-sample edge decays under
+  not, after costs, by a significant margin, and its in-sample edge decays under
   the Deflated Sharpe.
 - A live trading system. This is a research/characterization library.
 - A general time-series toolkit. The HMM exists to characterize market regimes.
@@ -50,7 +50,7 @@ invariance / prefix-determinism). See
 ## Layered architecture
 
 The package is strictly layered; each layer imports only from the ones below it.
-`src/regimehmm/` has **zero import-time side effects** — every heavy/lazy
+`src/regimehmm/` has **zero import-time side effects**, every heavy/lazy
 dependency is imported inside functions, and no fit, network call, or RNG draw runs
 at import (subprocess import-purity tested).
 
@@ -93,7 +93,7 @@ that keeps a collapsed state finite ([ADR-0003](decisions/0003-em-restarts-covar
 `gamma`, pair-marginals `xi`, log-likelihood). `em.py` is Baum-Welch with multiple
 seeded restarts, keeping the highest-likelihood fit and asserting per-iteration
 monotonic log-likelihood. `viterbi.py` recovers the MAP path (EDA-only).
-`filter.py` holds the frozen `HMMModel` and the **online forward filter** — the
+`filter.py` holds the frozen `HMMModel` and the **online forward filter**, the
 only tradable posterior.
 
 ### `regimes/`
@@ -145,7 +145,7 @@ returns (provided)  ──►  ── OR ──  ticker ──► Polygon EOD �
               verdict.py  ──►  no_timing_edge | marginal | timing_edge
 ```
 
-The deployed backend calls exactly one function — `run_regime_analysis(...)` — and
+The deployed backend calls exactly one function, `run_regime_analysis(...)`, and
 fits the HMM at request time on a small panel (cheap; no pre-trained artifact).
 Polygon failure degrades to the seeded synthetic generator so the call never
 hard-fails; `data_source` reports `polygon` / `synthetic` / `provided`.
@@ -166,7 +166,7 @@ The compute core guarantees, and tests enforce:
 5. **EM monotonicity.** The per-iteration training log-likelihood is non-decreasing
    within a restart (Baum-Welch is monotone), asserted at fit time.
 6. **Covariance floor.** A degenerate/collapsed state stays positive-definite and
-   finite (`floor = 1e-6`) — EM cannot emit a singular state.
+   finite (`floor = 1e-6`), EM cannot emit a singular state.
 7. **Honest `n_trials`.** The Deflated Sharpe is deflated by the full grid product
    (`|n_states| × |feature variants| × |cost grid|` = 36), never collapsed to 1.
 8. **Verdict safety.** `derive_timing_verdict` cannot emit `timing_edge` while
@@ -180,32 +180,32 @@ The compute core guarantees, and tests enforce:
 
 Tests are partitioned by intent under `tests/` (markers in `pyproject.toml`):
 
-- **`unit/`** — isolated kernels: the emission log-density + covariance floor, the
+- **`unit/`**, isolated kernels: the emission log-density + covariance floor, the
   canonical ordering, the characterization, the verdict truth table.
-- **`property/`** (Hypothesis) — the invariants above: online-filter no-lookahead
+- **`property/`** (Hypothesis), the invariants above: online-filter no-lookahead
   (future-perturbation invariance / prefix-determinism / shift-equivariance),
   posterior/transition stochasticity, canonical ordering, feature scale-invariance.
-- **`parity/`** — golden checks against independent references: HMM log-likelihood,
+- **`parity/`**, golden checks against independent references: HMM log-likelihood,
   smoothed `gamma`, and Viterbi path vs `hmmlearn.GaussianHMM` to `1e-6` on seeded
   2- and 3-state data; Deflated Sharpe vs the reused `dsr` reference to `1e-10`.
-- **`regression/`** — the honest null, locked: on `regime_switch` the overlay does
+- **`regression/`**, the honest null, locked: on `regime_switch` the overlay does
   not beat buy-and-hold and Memmel-JK is insignificant → `no_timing_edge`; the
   cost-grid is monotone; the verdict truth table; no-lookahead backtest regression.
-- **`integration/`** — the full `run_regime_analysis` entrypoint and the Typer CLI
+- **`integration/`**, the full `run_regime_analysis` entrypoint and the Typer CLI
   end-to-end on the synthetic fixture (offline; effective `n_trials` = 36).
 
 Seeded fixtures in `conftest.py` (`one_factor`, `regime_switch`, `pure_noise`) give
 every layer deterministic inputs with known structure. The whole suite runs
-**offline** — no test touches the network.
+**offline**, no test touches the network.
 
 ## Backend & frontend boundary
 
 The compute core is decoupled from delivery. The backend vendors
-`regime-hmm[data]` (numpy/pandas/scipy/sklearn — **not** `hmmlearn`, **not**
+`regime-hmm[data]` (numpy/pandas/scipy/sklearn, **not** `hmmlearn`, **not**
 `[viz]`/`[dev]`) under `api/lib/regime_hmm/` and exposes
 `POST /tools/regime-hmm/run`, fitting at request time and returning summary scalars
 (all `_safe_float`-cleaned) plus Plotly `{data, layout}` figures. Polygon failure
 falls back to synthetic; the response never hard-fails. The frontend renders the two
-figures and surfaces the pure-derived `verdict` and the honest caption — regime
-characterization is the win, timing is not free money — as the first thing a
+figures and surfaces the pure-derived `verdict` and the honest caption, regime
+characterization is the win, timing is not free money, as the first thing a
 visitor reads.

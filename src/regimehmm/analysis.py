@@ -1,4 +1,4 @@
-"""Public end-to-end entrypoint — the one function the backend calls.
+"""Public end-to-end entrypoint - the one function the backend calls.
 
 :func:`run_regime_analysis` is the single orchestration seam between the hosted
 FastAPI tool (``POST /tools/regime-hmm/run``) and the compute library. It runs the
@@ -12,7 +12,7 @@ honest pipeline end-to-end and returns a plain, JSON-serializable
         effective ``n_trials``)  ->  honest, structurally-constrained verdict.
 
 LEAKAGE DISCIPLINE: the out-of-sample regime signal is the ONLINE forward FILTER
-posterior (data <= t) ONLY — smoothed / Viterbi posteriors peek ahead and are
+posterior (data <= t) ONLY - smoothed / Viterbi posteriors peek ahead and are
 never used to drive a trade. The verdict is a PURE function of the OOS inference:
 it is structurally unable to claim the overlay beats buy-and-hold when Memmel-JK is
 insignificant or the Deflated Sharpe is non-positive.
@@ -92,12 +92,12 @@ class RegimeAnalysisResult:
         The DESCRIPTIVE (in-sample) fitted, canonicalized
         :class:`~regimehmm.hmm.filter.HMMModel` (kept so the figure helper can
         shade by the same canonical labels). This full-window fit drives the
-        regime FIGURE + characterization table ONLY — never the reported OOS
+        regime FIGURE + characterization table ONLY - never the reported OOS
         Sharpe numbers. Not serialized into ``summary``.
     states:
         The ``(n_obs,)`` DESCRIPTIVE (in-sample) online-filter canonical regime
         labels aligned to ``series``. These come from the full-window fit and so
-        legitimately see the whole sample — they are the in-sample regime MAP for
+        legitimately see the whole sample - they are the in-sample regime MAP for
         the figure, NOT a tradable OOS signal. The genuinely no-lookahead,
         per-fold OOS labels live in :attr:`oos_states`.
     series:
@@ -110,7 +110,7 @@ class RegimeAnalysisResult:
         The buy-and-hold benchmark return series over the same OOS window.
     oos_states:
         The per-fold ONLINE-FILTER (no-lookahead) canonical regime labels decoded
-        on the walk-forward OOS window — each label is decoded with a TRAIN-only
+        on the walk-forward OOS window - each label is decoded with a TRAIN-only
         fit, so it never peeks ahead. Indexed by the OOS dates.
     """
 
@@ -168,7 +168,7 @@ def _trial_sharpe_variance(overlay_returns: pd.Series, cost_grid: tuple[float, .
     r"""Real cross-trial variance of per-observation Sharpes from the cost sweep.
 
     The Deflated Sharpe's expected-maximum benchmark needs a genuine variance of the
-    trial Sharpe ratios — passing ``0.0`` degenerates that term and silently
+    trial Sharpe ratios - passing ``0.0`` degenerates that term and silently
     collapses the multiplicity correction. We derive a real, non-degenerate variance
     by re-charging the genuinely-OOS overlay return stream across the swept
     ``cost_grid`` (the same cost axis that drives ``n_effective_trials``) and taking
@@ -191,7 +191,7 @@ def _trial_sharpe_variance(overlay_returns: pd.Series, cost_grid: tuple[float, .
     # than re-running every fold, perturb the realized return stream by the marginal
     # cost difference each grid level would have implied on the same turnover proxy.
     # The turnover proxy is the bar-to-bar change magnitude of the overlay return's
-    # sign-stable exposure, approximated by |Δr| normalized — a monotone, bounded
+    # sign-stable exposure, approximated by |Δr| normalized - a monotone, bounded
     # stand-in that yields a real, ordered spread of trial Sharpes across the grid.
     ann = math.sqrt(PERIODS_PER_YEAR)
     deltas = np.abs(np.diff(base, prepend=base[:1]))
@@ -235,9 +235,9 @@ def run_regime_analysis(
 
     DATA: when ``returns`` is supplied it is used directly (the in-process / test
     path) and ``summary.data_source`` is ``"provided"``. Otherwise the loader
-    (:func:`regimehmm.data.get_prices`) fetches a small ``ticker`` price panel —
+    (:func:`regimehmm.data.get_prices`) fetches a small ``ticker`` price panel,
     trying Polygon and degrading to a seeded synthetic regime-switch series on ANY
-    upstream failure — so the call never hard-fails; ``summary.data_source`` then
+    upstream failure - so the call never hard-fails; ``summary.data_source`` then
     reports ``"polygon"`` or ``"synthetic"``.
 
     LEAKAGE GUARDS: the OOS regime signal is the online forward filter ONLY; the
@@ -311,7 +311,7 @@ def run_regime_analysis(
 
     # 2. DESCRIPTIVE (IN-SAMPLE) regime map ONLY. A full-window fit + online-filter
     #    decode drives the regime-shaded FIGURE and the per-regime characterization
-    #    table — clearly the in-sample regime map, exactly the display-vs-backtest
+    #    table - clearly the in-sample regime map, exactly the display-vs-backtest
     #    split. It is NEVER used to compute the reported OOS Sharpe numbers.
     features = build_features(market, feature_set=feature_set)
     aligned_returns = market.reindex(features.index)
@@ -340,7 +340,7 @@ def run_regime_analysis(
     # HMM, and the scale-to-zero shared-CPU VM is several times slower than a dev
     # box, so an unbounded multi-year OOS span (20+ folds) blows the request budget.
     # This stays genuinely OOS (train-only per fold, online-filter labels, identical
-    # purged/embargoed index) — it just scores the recent OOS window; the full-span
+    # purged/embargoed index) - it just scores the recent OOS window; the full-span
     # walk-forward remains available via the CLI / library.
     max_sync_oos_folds = 10
     cap_lookback = n_obs - max_sync_oos_folds * PERIODS_PER_QUARTER
@@ -361,7 +361,7 @@ def run_regime_analysis(
         # Live-latency cap: the walk-forward refits the HMM per quarterly fold, so
         # the per-fold EM search is bounded (1 seeded restart, <=20 iterations) to
         # keep a synchronous request responsive on the scale-to-zero VM. This does
-        # NOT touch OOS integrity — each fold is still train-only fit + online-filter
+        # NOT touch OOS integrity - each fold is still train-only fit + online-filter
         # labels on the identical purged/embargoed OOS index; only the EM search
         # depth + per-fold train window are trimmed. The scale-to-zero shared-CPU
         # VM is several times slower than a dev box, so fit_window_cap is held to
@@ -441,10 +441,10 @@ def assemble_regime_figures(result: RegimeAnalysisResult) -> dict[str, FigureDic
     Builds the two Plotly ``{"data", "layout"}`` figure dicts the hosted tool
     renders:
 
-    * ``"regime_figure"`` — the cumulative-return series shaded by the DESCRIPTIVE
+    * ``"regime_figure"`` - the cumulative-return series shaded by the DESCRIPTIVE
       (in-sample) canonical regime labels from the full-window fit; this is the
       regime MAP for display, not a tradable OOS signal;
-    * ``"equity_figure"`` — the GENUINELY-OOS equity curve of the regime overlay vs
+    * ``"equity_figure"`` - the GENUINELY-OOS equity curve of the regime overlay vs
       buy-and-hold (the anchored walk-forward legs, both starting at ``1.0``).
 
     Both figures are plain JSON-serializable mappings (Plotly is imported lazily by

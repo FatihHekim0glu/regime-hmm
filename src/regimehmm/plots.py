@@ -1,8 +1,8 @@
 """Plotly figure builders (lazy).
 
-Each builder returns a plain ``dict`` shaped ``{"data": [...], "layout": {...}}`` —
+Each builder returns a plain ``dict`` shaped ``{"data": [...], "layout": {...}}``,
 the same JSON shape the FastAPI layer serializes and the Next.js ``PlotlyChart``
-component renders — so the figures cross the API boundary with no Plotly object
+component renders - so the figures cross the API boundary with no Plotly object
 leaking through. Plotly is an OPTIONAL dependency (the ``viz`` extra) imported
 LAZILY inside each builder; importing this module has no side effects and does not
 require Plotly.
@@ -65,8 +65,8 @@ def regime_shaded_figure(
     r"""Build a price/return line with a FILTERED-regime background ribbon.
 
     Plots ``series`` (price or cumulative return) as a line, with the plot
-    background shaded by the (canonical) decoded regime at each step — one band
-    colour per regime — so the persistent high/low-vol regimes are visible at a
+    background shaded by the (canonical) decoded regime at each step - one band
+    colour per regime - so the persistent high/low-vol regimes are visible at a
     glance. A small legend maps each band colour to its regime label.
 
     SIGNAL DISCIPLINE: for an HONEST out-of-sample picture, ``states`` should be the
@@ -246,7 +246,7 @@ def regime_stats_figure(
 
     # A risk/return scatter: annualized volatility (x) vs annualized mean (y), one
     # marker per regime, coloured by canonical index. This shows the headline at a
-    # glance — low-vol regimes cluster at modest positive mean, high-vol regimes at
+    # glance - low-vol regimes cluster at modest positive mean, high-vol regimes at
     # lower mean and far higher risk.
     data: list[dict[str, Any]] = [
         {

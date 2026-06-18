@@ -2,7 +2,7 @@
 
 Two responsibilities, both side-effect-free at import:
 
-1. A SYNTHETIC regime-switch generator (:func:`generate_regime_switch`) — a 2/3-state
+1. A SYNTHETIC regime-switch generator (:func:`generate_regime_switch`) - a 2/3-state
    Gaussian HMM-style return series with PERSISTENT states of sharply different
    volatility, seeded via :func:`regimehmm._rng.make_rng`. Every test in the suite
    runs on this generator; no test touches the network.
@@ -243,10 +243,10 @@ def build_features(
 
     Assembles the per-observation feature columns selected by ``feature_set``:
 
-    * ``"returns"`` — the return itself (column 0, the canonicalization key);
-    * ``"returns_vol"`` — return plus a TRAILING realized-volatility feature
-      (rolling std over ``vol_window``, using only past returns — no lookahead);
-    * ``"returns_vol_macro"`` — the above plus a slow macro/trend feature.
+    * ``"returns"`` - the return itself (column 0, the canonicalization key);
+    * ``"returns_vol"`` - return plus a TRAILING realized-volatility feature
+      (rolling std over ``vol_window``, using only past returns - no lookahead);
+    * ``"returns_vol_macro"`` - the above plus a slow macro/trend feature.
 
     NO-LOOKAHEAD: every derived feature at ``t`` uses returns ``<= t`` only
     (trailing windows), so the feature matrix is causal. The leading rows with an
@@ -280,13 +280,13 @@ def build_features(
 
     ret = ensure_series(returns, name="returns")
 
-    # Column 0 is always the raw return — the canonicalization key downstream.
+    # Column 0 is always the raw return - the canonicalization key downstream.
     columns: dict[str, pd.Series] = {"return": ret}
 
     if feature_set in ("returns_vol", "returns_vol_macro"):
         # TRAILING realized volatility: rolling std over PAST returns only. The
         # window closes at t (inclusive of the current return), so the feature at
-        # t depends on returns <= t — no lookahead. Leading rows with an
+        # t depends on returns <= t - no lookahead. Leading rows with an
         # incomplete window become NaN and are dropped below.
         columns["realized_vol"] = ret.rolling(window=vol_window, min_periods=vol_window).std(ddof=0)
 
@@ -414,7 +414,7 @@ def compute_returns(prices: PricesLike) -> pd.Series:
     r"""Convert a single-ticker price panel to a simple return series.
 
     NO-LOOKAHEAD REQUIREMENT: returns are computed with
-    ``prices.pct_change(fill_method=None)`` — prices are NEVER forward-filled before
+    ``prices.pct_change(fill_method=None)`` - prices are NEVER forward-filled before
     differencing (ffill-then-diff manufactures spurious zero returns across gaps and
     leaks information). The leading NaN row is dropped and the result is squeezed to
     a 1-D Series.

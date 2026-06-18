@@ -2,17 +2,17 @@
 
 These cover the three contracts owned by the evaluation/verdict group:
 
-* **DSR n_trials guard** — :func:`effective_n_trials` returns the product of the
+* **DSR n_trials guard** - :func:`effective_n_trials` returns the product of the
   swept axes (``|n_states grid| x |feature variants| x |cost grid|``) and never
   silently collapses to ``1``; the guard rejects any factor ``< 1``.
-* **Verdict truth table** — :func:`derive_timing_verdict` is a pure function of
+* **Verdict truth table** - :func:`derive_timing_verdict` is a pure function of
   ``(jk_pvalue, deflated_sharpe, sharpe_diff)`` and is STRUCTURALLY unable to
   return ``timing_edge`` whenever Memmel-JK is insignificant or the Deflated
   Sharpe is ``<= 0``. Includes the honest-null wiring: on the synthetic
   ``regime_switch`` fixture, the regime-timing overlay does NOT beat buy-and-hold
   out-of-sample (Memmel-JK insignificant) so the wired verdict is
   ``no_timing_edge``.
-* **DSR parity 1e-10** — the verdict's Deflated-Sharpe wiring reproduces the
+* **DSR parity 1e-10** - the verdict's Deflated-Sharpe wiring reproduces the
   closed-form Bailey-Lopez de Prado DSR (an independent inline reference) to
   ``1e-10``.
 
@@ -178,7 +178,7 @@ def _filtered_regime_overlay(returns: pd.Series, states: np.ndarray) -> pd.Serie
     (state ``0``), de-risked exposure in the turbulent regime. This is the SAME
     construction the overlay group wires through the online filter; here we feed it
     the ground-truth states (an upper bound on what the filter could know) to make
-    the honest-null result conservative — even with a perfect regime label and no
+    the honest-null result conservative - even with a perfect regime label and no
     costs modelled here, the overlay does not reliably beat buy-and-hold OOS.
     """
     exposure = np.where(states == 0, 1.0, 0.0)
@@ -196,7 +196,7 @@ def test_honest_null_regime_switch_overlay_does_not_beat_buyhold(
     (``dsr.py``) on the synthetic fixture: the regime-timing overlay's OOS Sharpe
     gap over buy-and-hold is NOT statistically distinguishable from zero
     (Memmel-JK insignificant), so the honest verdict collapses to
-    ``no_timing_edge`` — exactly the project's pinned headline.
+    ``no_timing_edge`` - exactly the project's pinned headline.
     """
     returns = regime_switch["returns"]
     states = regime_switch["states"]
@@ -318,7 +318,7 @@ def test_dsr_wiring_matches_reference_to_1e_10(
 def test_dsr_is_non_increasing_in_n_trials() -> None:
     """More trials can only DEFLATE the Sharpe (monotone non-increasing in N).
 
-    Confirms the multiplicity penalty actually bites — the honest yardstick that
+    Confirms the multiplicity penalty actually bites - the honest yardstick that
     makes an in-sample edge decay out-of-sample once the full grid is counted.
     """
     prev = 1.0

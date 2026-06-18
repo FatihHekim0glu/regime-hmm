@@ -3,7 +3,7 @@
 The headline invariant is ONLINE-FILTER NO-LOOKAHEAD: the filtered posterior at
 time ``t`` must be invariant to any perturbation of the returns AFTER ``t``
 (future-perturbation invariance / prefix-determinism). This is what makes the
-filtered posterior — and ONLY it — a legitimate out-of-sample regime signal;
+filtered posterior - and ONLY it - a legitimate out-of-sample regime signal;
 smoothed/Viterbi posteriors fail it by construction.
 
 Also pinned here: posterior rows sum to 1 (filtered and smoothed), transition rows
@@ -118,6 +118,7 @@ def test_smoothed_posterior_rows_and_xi_sum_to_one(seed: int, n_states: int, n_o
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @given(
     seed=st.integers(min_value=0, max_value=2_000),
     n_states=st.integers(min_value=2, max_value=3),

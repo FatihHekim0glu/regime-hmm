@@ -3,9 +3,9 @@
 A raw HMM fit assigns arbitrary integer indices to its hidden states: the "high
 vol" regime might be state 2 in one fold and state 0 in the next, purely because
 of restart initialization. That label arbitrariness would scramble any cross-fold
-characterization or golden regression. This module imposes a CANONICAL ordering —
+characterization or golden regression. This module imposes a CANONICAL ordering,
 states sorted by ascending mean conditional return, tie-broken by ascending
-volatility — and returns a permutation that relabels the model and any decoded
+volatility - and returns a permutation that relabels the model and any decoded
 state series consistently.
 
 After canonicalization, "regime 0" always means the same kind of regime (lowest

@@ -1,7 +1,7 @@
 """Integration tests for the public entrypoint (``regimehmm.analysis``).
 
-These exercise :func:`regimehmm.run_regime_analysis` — the single function the
-hosted FastAPI tool calls — end-to-end on the deterministic synthetic
+These exercise :func:`regimehmm.run_regime_analysis` - the single function the
+hosted FastAPI tool calls - end-to-end on the deterministic synthetic
 ``regime_switch`` fixture (no network), plus the :func:`assemble_regime_figures`
 helper that builds the two frontend Plotly figures.
 

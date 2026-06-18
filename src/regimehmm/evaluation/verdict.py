@@ -29,12 +29,12 @@ class TimingVerdict(StrEnum):
     """
 
     #: The Memmel-JK test is insignificant OR the Deflated Sharpe is non-positive
-    #: — the overlay shows no reliable edge over buy-and-hold (the honest,
+    #: - the overlay shows no reliable edge over buy-and-hold (the honest,
     #: literature-consistent outcome and the project's headline).
     NO_TIMING_EDGE = "no_timing_edge"
 
     #: A positive Sharpe gap that is statistically detectable (significant Memmel-JK)
-    #: but does NOT survive Deflated-Sharpe multiple-testing deflation — a fragile,
+    #: but does NOT survive Deflated-Sharpe multiple-testing deflation - a fragile,
     #: likely-overfit edge.
     MARGINAL = "marginal"
 

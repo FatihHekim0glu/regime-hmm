@@ -4,7 +4,7 @@ Computes, in LOG space (via ``scipy.special.logsumexp`` for numerical stability)
 the forward messages ``alpha``, backward messages ``beta``, the SMOOTHED state
 posteriors ``gamma`` and pair-marginals ``xi``, and the total sequence
 log-likelihood. These quantities use the WHOLE sample (data before AND after each
-``t``), so the smoothed posteriors PEEK AHEAD and are **in-sample EDA only —
+``t``), so the smoothed posteriors PEEK AHEAD and are **in-sample EDA only,
 NEVER tradable**. The online, no-lookahead posterior lives in
 :mod:`regimehmm.hmm.filter`.
 
@@ -29,7 +29,7 @@ class ForwardBackwardResult:
 
     NON-TRADABLE: ``gamma`` and ``xi`` are SMOOTHED (they condition on the entire
     sequence, including the future) and must only be used for in-sample EDA and as
-    the EM E-step sufficient statistics — never as an out-of-sample trading signal.
+    the EM E-step sufficient statistics - never as an out-of-sample trading signal.
 
     Attributes
     ----------
