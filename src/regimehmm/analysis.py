@@ -347,6 +347,21 @@ def run_regime_analysis(
     lookback = max(lookback, cap_lookback)
     lookback = min(lookback, n_obs - 2 * PERIODS_PER_QUARTER - 2)  # keep >=2 OOS folds
     lookback = max(lookback, 60)
+    # The per-fold EM fit-window cap (~6 months, a latency budget for the
+    # scale-to-zero VM) must still leave enough USABLE feature rows after the
+    # trailing-window warmup that ``build_features`` drops. The macro feature
+    # consumes ``vol_window * 6`` (= 126) leading bars - exactly the cheap 126-bar
+    # cap - so a capped macro train slice collapses to a single row and the fit
+    # raises ``InsufficientDataError``. Give the macro path a warmup-aware cap
+    # (warmup + a 126-bar fit budget) so it fits on a real window; the lighter
+    # feature sets (warmup <= vol_window) keep the cheap cap unchanged.
+    base_fit_window_cap = 126
+    macro_warmup = 21 * 6  # mirrors build_features' returns_vol_macro window (vol_window=21)
+    fit_window_cap = (
+        macro_warmup + base_fit_window_cap
+        if feature_set == "returns_vol_macro"
+        else base_fit_window_cap
+    )
     wf = walk_forward_regime_overlay(
         aligned_returns,
         feature_set=feature_set,
@@ -368,7 +383,7 @@ def run_regime_analysis(
         # ~6 months and max_iter to 12 (EM early-stops on convergence well before).
         n_restarts=1,
         max_iter=12,
-        fit_window_cap=126,
+        fit_window_cap=fit_window_cap,
     )
     overlay = wf.overlay
 
