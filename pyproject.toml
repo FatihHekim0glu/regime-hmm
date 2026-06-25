@@ -36,6 +36,10 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.0",
     "scipy>=1.11",
+    # Shared torch-free honest-statistics kernel (DSR/PSR/...). Local editable
+    # path dep for development; the public release will pin a git tag, e.g.
+    # "quantcore @ git+https://github.com/FatihHekim0glu/quantcore@v0.1.0".
+    "quantcore @ git+https://github.com/FatihHekim0glu/quantcore@v0.1.0",
 ]
 
 [project.urls]
